@@ -28,21 +28,19 @@ COPY --from=xx-build /out/ /usr/bin/
 ### Get TagLib
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.20 AS taglib-build
 ARG TARGETPLATFORM
-ARG CROSS_TAGLIB_VERSION=2.2.0-1
+ARG CROSS_TAGLIB_VERSION=2.2.1-1
 ENV CROSS_TAGLIB_RELEASES_URL=https://github.com/navidrome/cross-taglib/releases/download/v${CROSS_TAGLIB_VERSION}/
 
 # wget in busybox can't follow redirects
-RUN <<EOT
-    apk add --no-cache wget
-    PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '-')
-    FILE=taglib-${PLATFORM}.tar.gz
-
-    DOWNLOAD_URL=${CROSS_TAGLIB_RELEASES_URL}${FILE}
-    wget ${DOWNLOAD_URL}
-
-    mkdir /taglib
-    tar -xzf ${FILE} -C /taglib
-EOT
+RUN apk add --no-cache curl && \
+    PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '-') && \
+    FILE=taglib-${PLATFORM}.tar.gz && \
+    DOWNLOAD_URL=${CROSS_TAGLIB_RELEASES_URL}${FILE} && \
+    echo "Downloading TagLib from: ${DOWNLOAD_URL}" && \
+    curl -L -f -o "${FILE}" "${DOWNLOAD_URL}" && \
+    echo "Download completed" && \
+    mkdir -p /taglib && \
+    tar -xzf "${FILE}" -C /taglib
 
 ########################################################################################################################
 ### Build Navidrome UI
@@ -52,7 +50,7 @@ WORKDIR /app
 # Install node dependencies
 COPY ui/package.json ui/package-lock.json ./
 COPY ui/bin/ ./bin/
-RUN npm ci
+RUN chmod +x bin/*.sh && npm ci
 
 # Build bundle
 COPY ui/ ./
@@ -89,31 +87,42 @@ RUN --mount=type=bind,source=. \
     --mount=from=osxcross,src=/osxcross/SDK,target=/xx-sdk,ro \
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/go/pkg/mod \
-    --mount=from=taglib-build,target=/taglib,src=/taglib,ro <<EOT
-
-    # Setup CGO cross-compilation environment
-    xx-go --wrap
-    export CGO_ENABLED=1
-    export CGO_CFLAGS_ALLOW="--define-prefix"
-    export PKG_CONFIG_PATH=/taglib/lib/pkgconfig
-    cat $(go env GOENV)
-
-    # Only Darwin (macOS) requires clang (default), Windows requires gcc, everything else can use any compiler.
-    # So let's use gcc for everything except Darwin.
-    if [ "$(xx-info os)" != "darwin" ]; then
-        export CC=$(xx-info)-gcc
-        export CXX=$(xx-info)-g++
-        export LD_EXTRA="-extldflags '-static -latomic'"
-    fi
-    if [ "$(xx-info os)" = "windows" ]; then
-        export EXT=".exe"
-    fi
-
+    --mount=from=taglib-build,target=/taglib,src=/taglib,ro \
+    sh -c '\
+    set -ex; \
+    # Setup cross-compilation environment \
+    export CGO_ENABLED=1; \
+    export CGO_CFLAGS_ALLOW="--define-prefix"; \
+    export PKG_CONFIG_PATH=/taglib/lib/pkgconfig; \
+    # Get target OS and architecture \
+    OS="$(xx-info os)"; \
+    ARCH="$(xx-info arch)"; \
+    echo "Building for OS: $OS, ARCH: $ARCH"; \
+    # Set compiler based on OS \
+    if [ "$OS" = "darwin" ]; then \
+        # Darwin uses clang \
+        export CC="clang"; \
+        export CXX="clang++"; \
+        export LD_EXTRA=""; \
+    elif [ "$OS" = "windows" ]; then \
+        # Windows uses gcc and adds .exe extension \
+        export CC="$(xx-info)-gcc"; \
+        export CXX="$(xx-info)-g++"; \
+        export LD_EXTRA="-extldflags \"-static -latomic\""; \
+        export EXT=".exe"; \
+    else \
+        # Linux and others use gcc \
+        export CC="$(xx-info)-gcc"; \
+        export CXX="$(xx-info)-g++"; \
+        export LD_EXTRA="-extldflags \"-static -latomic\""; \
+        export EXT=""; \
+    fi; \
+    echo "Using CC: $CC, CXX: $CXX"; \
+    # Build the binary \
     go build -tags=netgo,sqlite_fts5 -ldflags="${LD_EXTRA} -w -s \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
-        -o /out/navidrome${EXT} .
-EOT
+        -o /out/navidrome${EXT} .'
 
 # Verify if the binary was built for the correct platform and it is statically linked
 RUN xx-verify --static /out/navidrome*
@@ -144,4 +153,3 @@ EXPOSE ${ND_PORT}
 WORKDIR /app
 
 ENTRYPOINT ["/app/navidrome"]
-

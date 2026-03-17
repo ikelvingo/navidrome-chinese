@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	apiBaseUrl = "http://192.168.10.2:22522/"
+	apiBaseUrl = "http://192.168.10.2:22522/lastfm/"
 )
 
 type lastFMError struct {
