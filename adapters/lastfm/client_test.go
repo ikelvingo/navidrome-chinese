@@ -117,7 +117,7 @@ var _ = Describe("client", func() {
 			top, err := client.artistGetTopTracks(context.Background(), "U2", 2)
 			Expect(err).To(BeNil())
 			Expect(len(top.Track)).To(Equal(2))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getTopTracks"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrlCustom + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getTopTracks"))
 		})
 	})
 

@@ -88,7 +88,7 @@ func (c *client) artistGetTopTracks(ctx context.Context, name string, limit int)
 	params.Add("method", "artist.getTopTracks")
 	params.Add("artist", name)
 	params.Add("limit", strconv.Itoa(limit))
-	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
+	response, err := c.makeRequestCustom(ctx, http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
 	}
