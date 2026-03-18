@@ -33,7 +33,7 @@ var _ = Describe("client", func() {
 			album, err := client.albumGetInfo(context.Background(), "Believe", "U2", "mbid-1234", "pt")
 			Expect(err).To(BeNil())
 			Expect(album.Name).To(Equal("Believe"))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?album=Believe&api_key=API_KEY&artist=U2&format=json&lang=pt&mbid=mbid-1234&method=album.getInfo"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrlCustom + "?album=Believe&api_key=API_KEY&artist=U2&format=json&lang=pt&mbid=mbid-1234&method=album.getInfo"))
 		})
 	})
 
@@ -45,7 +45,7 @@ var _ = Describe("client", func() {
 			artist, err := client.artistGetInfo(context.Background(), "U2", "pt")
 			Expect(err).To(BeNil())
 			Expect(artist.Name).To(Equal("U2"))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&method=artist.getInfo"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrlCustom + "?api_key=API_KEY&artist=U2&format=json&lang=pt&method=artist.getInfo"))
 		})
 
 		It("fails if Last.fm returns an http status != 200", func() {
