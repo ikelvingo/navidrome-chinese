@@ -1,4 +1,4 @@
-package ffmpeg
+﻿package ffmpeg
 
 import (
 	. "github.com/onsi/ginkgo/v2"
@@ -85,7 +85,7 @@ Input #0, ogg, from '/Users/deluan/Music/iTunes/iTunes Media/Music/_Testes/Jamai
 
 		It("detects embedded cover art in m4a containers", func() {
 			const output = `
-Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'Putumayo Presents_ Euro Groove/01 Destins et Désirs.m4a':
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'Putumayo Presents_ Euro Groove/01 Destins et D茅sirs.m4a':
   Metadata:
     album           : Putumayo Presents: Euro Groove
   Duration: 00:05:15.81, start: 0.047889, bitrate: 133 kb/s
@@ -229,10 +229,10 @@ Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'modulo.m4a':
                     : 02. Carta Corrente
                     : 03. X
                     : 04. Eclipse Lunar
-                    : 05. Vírus de Sírius
+                    : 05. V铆rus de S铆rius
                     : 06. Doktor Fritz
                     : 07. Wunderbar
-                    : 08. Quarta Dimensão
+                    : 08. Quarta Dimens茫o
   Duration: 00:26:46.96, start: 0.052971, bitrate: 69 kb/s`
 			const expectedComment = `https://www.mixcloud.com/codigorock/30-minutos-com-saara-saara/
 
@@ -242,34 +242,34 @@ Tracklist:
 02. Carta Corrente
 03. X
 04. Eclipse Lunar
-05. Vírus de Sírius
+05. V铆rus de S铆rius
 06. Doktor Fritz
 07. Wunderbar
-08. Quarta Dimensão`
+08. Quarta Dimens茫o`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", outputWithMultilineComment)
 			Expect(md).To(HaveKeyWithValue("comment", []string{expectedComment}))
 		})
 
 		It("parses sort tags correctly", func() {
 			const output = `
-Input #0, mp3, from '/Users/deluan/Downloads/椎名林檎 - 加爾基 精液 栗ノ花 - 2003/02 - ドツペルゲンガー.mp3':
+Input #0, mp3, from '/Users/deluan/Downloads/妞庡悕鏋楁獛 - 鍔犵埦鍩?绮炬恫 鏍椼儙鑺?- 2003/02 - 銉夈儎銉氥儷銈层兂銈兗.mp3':
   Metadata:
-    title-sort      : Dopperugengā
-    album           : 加爾基 精液 栗ノ花
-    artist          : 椎名林檎
-    album_artist    : 椎名林檎
-    title           : ドツペルゲンガー
+    title-sort      : Dopperugeng膩
+    album           : 鍔犵埦鍩?绮炬恫 鏍椼儙鑺?
+    artist          : 妞庡悕鏋楁獛
+    album_artist    : 妞庡悕鏋楁獛
+    title           : 銉夈儎銉氥儷銈层兂銈兗
     albumsort       : Kalk Samen Kuri No Hana
     artist_sort     : Shiina, Ringo
     ALBUMARTISTSORT : Shiina, Ringo
 `
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
 			Expect(md).To(SatisfyAll(
-				HaveKeyWithValue("title", []string{"ドツペルゲンガー"}),
-				HaveKeyWithValue("album", []string{"加爾基 精液 栗ノ花"}),
-				HaveKeyWithValue("artist", []string{"椎名林檎"}),
-				HaveKeyWithValue("album_artist", []string{"椎名林檎"}),
-				HaveKeyWithValue("title-sort", []string{"Dopperugengā"}),
+				HaveKeyWithValue("title", []string{"銉夈儎銉氥儷銈层兂銈兗"}),
+				HaveKeyWithValue("album", []string{"鍔犵埦鍩?绮炬恫 鏍椼儙鑺?}),
+				HaveKeyWithValue("artist", []string{"妞庡悕鏋楁獛"}),
+				HaveKeyWithValue("album_artist", []string{"妞庡悕鏋楁獛"}),
+				HaveKeyWithValue("title-sort", []string{"Dopperugeng膩"}),
 				HaveKeyWithValue("albumsort", []string{"Kalk Samen Kuri No Hana"}),
 				HaveKeyWithValue("artist_sort", []string{"Shiina, Ringo"}),
 				HaveKeyWithValue("albumartistsort", []string{"Shiina, Ringo"}),
@@ -373,3 +373,4 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
 		}))
 	})
 })
+

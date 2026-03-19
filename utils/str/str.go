@@ -1,4 +1,4 @@
-package str
+﻿package str
 
 import (
 	"strings"
@@ -7,9 +7,9 @@ import (
 
 var utf8ToAscii = func() *strings.Replacer {
 	var utf8Map = map[string]string{
-		"'": `‘’‛′`,
-		`"`: `＂〃ˮײ᳓″‶˶ʺ“”˝‟`,
-		"-": `‐–—−―`,
+		"'": `‘’‚‛`,
+		`"`: `„‟“”«»‹›`,
+		"-": `–—―−`,
 	}
 
 	list := make([]string, 0, len(utf8Map)*2)

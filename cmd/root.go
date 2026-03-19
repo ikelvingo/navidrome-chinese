@@ -1,4 +1,4 @@
-package cmd
+﻿package cmd
 
 import (
 	"context"
@@ -9,25 +9,26 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/db"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/resources"
-	"github.com/navidrome/navidrome/scanner"
-	"github.com/navidrome/navidrome/scheduler"
-	"github.com/navidrome/navidrome/server/backgrounds"
+	"github.com/ikelvingo/navidrome/conf"
+	"github.com/ikelvingo/navidrome/consts"
+	"github.com/ikelvingo/navidrome/db"
+	"github.com/ikelvingo/navidrome/log"
+	"github.com/ikelvingo/navidrome/model"
+	"github.com/ikelvingo/navidrome/resources"
+	"github.com/ikelvingo/navidrome/scanner"
+	"github.com/ikelvingo/navidrome/scheduler"
+	"github.com/ikelvingo/navidrome/server/backgrounds"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
 
 	// Import adapters to register them
-	_ "github.com/navidrome/navidrome/adapters/deezer"
-	_ "github.com/navidrome/navidrome/adapters/gotaglib"
-	_ "github.com/navidrome/navidrome/adapters/lastfm"
-	_ "github.com/navidrome/navidrome/adapters/listenbrainz"
-	_ "github.com/navidrome/navidrome/adapters/taglib"
+	_ "github.com/ikelvingo/navidrome/adapters/deezer"
+	_ "github.com/ikelvingo/navidrome/adapters/gotaglib"
+	_ "github.com/ikelvingo/navidrome/adapters/lastfm"
+	_ "github.com/ikelvingo/navidrome/adapters/listenbrainz"
+	_ "github.com/ikelvingo/navidrome/adapters/netease"
+	_ "github.com/ikelvingo/navidrome/adapters/taglib"
 )
 
 var (

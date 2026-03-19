@@ -1,18 +1,17 @@
-package netease
+﻿package netease
 
 import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/ikelvingo/navidrome/conf"
+	"github.com/ikelvingo/navidrome/consts"
+	"github.com/ikelvingo/navidrome/core/agents"
+	"github.com/ikelvingo/navidrome/log"
+	"github.com/ikelvingo/navidrome/model"
+	"github.com/ikelvingo/navidrome/utils/cache"
 )
 
 const (
@@ -31,7 +30,7 @@ func neteaseConstructor(ds model.DataStore) *neteaseAgent {
 	}
 
 	// Get API URLs from config, fallback to defaults if empty
-	apiURLs := conf.Server.Netease.ApiURLs
+	apiURLs := conf.Server.Netease.APIUrls
 	var urls []string
 	if apiURLs != "" {
 		urls = strings.Split(apiURLs, ",")
@@ -220,7 +219,7 @@ func (n *neteaseAgent) GetArtistImages(ctx context.Context, id, name, mbid strin
 	// Handle image URL mapping (some APIs return 'cover' and 'avatar' instead of 'picUrl' and 'img1v1Url')
 	picURL := artist.PicURL
 	img1v1URL := artist.Img1v1URL
-	
+
 	// If PicURL is empty but we have other image fields, try to map them
 	if picURL == "" {
 		// Check if there are other image fields in the artist struct

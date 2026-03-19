@@ -120,8 +120,8 @@ RUN --mount=type=bind,source=. \
     echo "Using CC: $CC, CXX: $CXX"; \
     # Build the binary \
     go build -tags=netgo,sqlite_fts5 -ldflags="${LD_EXTRA} -w -s \
-        -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
-        -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
+        -X github.com/ikelvingo/navidrome/consts.gitSha=${GIT_SHA} \
+        -X github.com/ikelvingo/navidrome/consts.gitTag=${GIT_TAG}" \
         -o /out/navidrome${EXT} .'
 
 # Verify if the binary was built for the correct platform and it is statically linked
