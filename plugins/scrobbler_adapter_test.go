@@ -29,7 +29,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 	BeforeAll(func() {
 		// Load the scrobbler via a new manager with the test-scrobbler plugin
-		scrobblerManager, _ = createTestManagerWithPlugins(nil, "test-scrobbler"+PackageExtension)
+		scrobblerManager, _ = createTestManagerWithPlugins(nil, "test-scrobbler"㶧⑪ބ웗Ʝ⨧)
 
 		var ok bool
 		s, ok = scrobblerManager.LoadScrobbler("test-scrobbler")
@@ -64,7 +64,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			BeforeAll(func() {
 				mgr, _ := createTestManagerWithPlugins(map[string]map[string]string{
 					"test-scrobbler": {"authorized": "false"},
-				}, "test-scrobbler"+PackageExtension)
+				}, "test-scrobbler"㶧⑪ބ웗Ʝ⨧)
 
 				var ok bool
 				notAuthScrobbler, ok = mgr.LoadScrobbler("test-scrobbler")
@@ -140,7 +140,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			BeforeAll(func() {
 				mgr, _ := createTestManagerWithPlugins(map[string]map[string]string{
 					"test-scrobbler": {"error": "service unavailable", "error_type": "scrobbler(retry_later)"},
-				}, "test-scrobbler"+PackageExtension)
+				}, "test-scrobbler"㶧⑪ބ웗Ʝ⨧)
 
 				var ok bool
 				retryScrobbler, ok = mgr.LoadScrobbler("test-scrobbler")
@@ -186,7 +186,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			BeforeAll(func() {
 				mgr, _ := createTestManagerWithPlugins(map[string]map[string]string{
 					"test-scrobbler": {"error": "user not linked", "error_type": "scrobbler(not_authorized)"},
-				}, "test-scrobbler"+PackageExtension)
+				}, "test-scrobbler"㶧⑪ބ웗Ʝ⨧)
 
 				var ok bool
 				notAuthScrobbler, ok = mgr.LoadScrobbler("test-scrobbler")
@@ -210,7 +210,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			BeforeAll(func() {
 				mgr, _ := createTestManagerWithPlugins(map[string]map[string]string{
 					"test-scrobbler": {"error": "track rejected", "error_type": "scrobbler(unrecoverable)"},
-				}, "test-scrobbler"+PackageExtension)
+				}, "test-scrobbler"㶧⑪ބ웗Ʝ⨧)
 
 				var ok bool
 				unrecoverableScrobbler, ok = mgr.LoadScrobbler("test-scrobbler")

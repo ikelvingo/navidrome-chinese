@@ -271,7 +271,7 @@ var _ = Describe("Provider - AlbumImage", func() {
 		)
 
 		BeforeEach(func() {
-			// Test with en dash (â€“) in album name
+			// Test with en dash (ï¿? in album name
 			albumWithEnDash = &model.Album{ID: "album-endash", Name: originalAlbumName, AlbumArtistID: "artist-1"}
 			mockArtistRepo.Mock = mock.Mock{} // Reset default expectations
 			mockAlbumRepo.Mock = mock.Mock{}  // Reset default expectations
@@ -318,7 +318,7 @@ var _ = Describe("Provider - AlbumImage", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(imgURL).To(Equal(expectedURL))
 				mockAlbumRepo.AssertCalled(GinkgoT(), "Get", "album-endash")
-				// This assertion ensures the normalized name is used (en dash â†’ hyphen)
+				// This assertion ensures the normalized name is used (en dash ï¿?hyphen)
 				mockAlbumAgent.AssertCalled(GinkgoT(), "GetAlbumImages", ctx, normalizedAlbumName, "", "")
 			})
 		})

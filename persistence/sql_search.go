@@ -21,7 +21,7 @@ type searchConfig struct {
 	OrderBy      []string // ORDER BY for text search results (e.g. ["name"])
 	MBIDFields   []string // columns to match when query is a UUID
 	// LibraryFilter overrides the default applyLibraryFilter for FTS Phase 1.
-	// Needed when library access requires a junction table (e.g. artist → library_artist).
+	// Needed when library access requires a junction table (e.g. artist ÿ¢?library_artist).
 	LibraryFilter func(sq SelectBuilder) SelectBuilder
 }
 
@@ -45,7 +45,7 @@ func getSearchStrategy(tableName, query string) searchStrategy {
 	return newFTSSearch(tableName, query)
 }
 
-// doSearch dispatches a search query: empty → natural order, UUID → MBID match,
+// doSearch dispatches a search query: empty ÿ¢?natural order, UUID ÿ¢?MBID match,
 // otherwise delegates to getSearchStrategy. sq must already have LIMIT/OFFSET set
 // via newSelect(options...). options is forwarded so FTS Phase 1 can apply the same
 // filters and pagination independently.
@@ -55,7 +55,7 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, results any, cfg sea
 
 	sq = sq.Where(Eq{r.tableName + ".missing": false})
 
-	// Empty query (OpenSubsonic `search3?query=""`) — return all in natural order.
+	// Empty query (OpenSubsonic `search3?query=""`) ÿ¢?return all in natural order.
 	if q == "" || q == `""` {
 		sq = sq.OrderBy(cfg.NaturalOrder)
 		return r.queryAll(sq, results, options)

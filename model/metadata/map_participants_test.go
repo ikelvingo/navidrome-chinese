@@ -175,7 +175,7 @@ var _ = Describe("Participants", func() {
 			})
 
 			It("should concatenate all ARTIST values as display name", func() {
-				Expect(mf.Artist).To(Equal("First Artist • Second Artist"))
+				Expect(mf.Artist).To(Equal("First Artist / Second Artist"))
 			})
 
 			It("should populate the participants with all artists", func() {
@@ -270,7 +270,7 @@ var _ = Describe("Participants", func() {
 			})
 
 			It("should concatenate ARTISTS as display name", func() {
-				Expect(mf.Artist).To(Equal("First Artist • Second Artist"))
+				Expect(mf.Artist).To(Equal("First Artist / Second Artist"))
 			})
 
 			It("should populate the participants with all artists", func() {
@@ -346,7 +346,7 @@ var _ = Describe("Participants", func() {
 			})
 
 			It("should use ARTIST values concatenated as a display name ", func() {
-				Expect(mf.Artist).To(Equal("First Artist • Second Artist"))
+				Expect(mf.Artist).To(Equal("First Artist / Second Artist"))
 			})
 
 			It("should prioritize ARTISTS tags", func() {
@@ -469,7 +469,7 @@ var _ = Describe("Participants", func() {
 				})
 
 				It("should use the ALBUMARTIST names as display name", func() {
-					Expect(mf.AlbumArtist).To(Equal("Album Artist Name 1 • Album Artist Name 2"))
+					Expect(mf.AlbumArtist).To(Equal("Album Artist Name 1 / Album Artist Name 2"))
 				})
 			})
 		})

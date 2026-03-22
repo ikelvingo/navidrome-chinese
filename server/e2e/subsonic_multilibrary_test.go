@@ -52,7 +52,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 		adminWithLibs = *loadedAdmin
 
-		// Run incremental scan to import lib2 content (lib1 files unchanged → skipped)
+		// Run incremental scan to import lib2 content (lib1 files unchanged ÿ¢?skipped)
 		s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
 			playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
 		_, err = s.ScanAll(ctx, false)

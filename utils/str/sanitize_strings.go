@@ -11,7 +11,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 )
 
-var ignoredCharsRegex = regexp.MustCompile("[“”‘’'\"\\[({\\])},]")
+var ignoredCharsRegex = regexp.MustCompile("[“”‘�?\"\\[({\\])},]")
 var slashRemover = strings.NewReplacer("\\", " ", "/", " ")
 
 func SanitizeStrings(text ...string) string {

@@ -12,7 +12,7 @@ This is a WebSocket-based WASM plugin for Navidrome that displays real-time cryp
 
 ## Configuration
 
-Configure in the Navidrome UI (Settings â†’ Plugins â†’ crypto-ticker):
+Configure in the Navidrome UI (Settings ï¿?Plugins ï¿?crypto-ticker):
 
 | Key       | Description                                                          | Default   |
 |-----------|----------------------------------------------------------------------|-----------|

@@ -47,7 +47,7 @@ pub struct GetLyricsResponse {
     pub lyrics: Vec<LyricsText>,
 }
 /// LyricsText represents a single set of lyrics in raw text format.
-/// Text can be plain text or LRC format — Navidrome will parse it.
+/// Text can be plain text or LRC format �?Navidrome will parse it.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LyricsText {
@@ -69,7 +69,7 @@ pub struct TrackInfo {
     /// Album is the album name.
     #[serde(default)]
     pub album: String,
-    /// Artist is the formatted artist name for display (e.g., "Artist1 • Artist2").
+    /// Artist is the formatted artist name for display (e.g., "Artist1 / Artist2").
     #[serde(default)]
     pub artist: String,
     /// AlbumArtist is the formatted album artist name for display.

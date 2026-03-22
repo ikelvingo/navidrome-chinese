@@ -104,7 +104,7 @@ func (a *playlistArtworkReader) fromPlaylistExternalImage(ctx context.Context) s
 }
 
 // fromLocalFile returns a sourceFunc that opens the given local path.
-// Returns (nil, "", nil) if path is empty — signalling "not found, try next source".
+// Returns (nil, "", nil) if path is empty ÿ¢?signalling "not found, try next source".
 func fromLocalFile(path string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		if path == "" {
@@ -252,12 +252,12 @@ func fillCenter(src image.Image, dstW, dstH int) image.Image {
 
 	var cropRect image.Rectangle
 	if srcAspect > dstAspect {
-		// Source is wider — crop horizontally
+		// Source is wider ÿ¢?crop horizontally
 		cropW := int(float64(srcH) * dstAspect)
 		cropX := (srcW - cropW) / 2
 		cropRect = image.Rect(srcBounds.Min.X+cropX, srcBounds.Min.Y, srcBounds.Min.X+cropX+cropW, srcBounds.Max.Y)
 	} else {
-		// Source is taller — crop vertically
+		// Source is taller ÿ¢?crop vertically
 		cropH := int(float64(srcW) / dstAspect)
 		cropY := (srcH - cropH) / 2
 		cropRect = image.Rect(srcBounds.Min.X, srcBounds.Min.Y+cropY, srcBounds.Max.X, srcBounds.Min.Y+cropY+cropH)

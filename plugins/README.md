@@ -5,12 +5,12 @@ Navidrome supports WebAssembly (Wasm) plugins for extending functionality. Plugi
 The plugin system is built on **[Extism](https://extism.org/)**, a cross-language framework for building WebAssembly plugins. This means you can write plugins in any language that Extism supports (Go, Rust, Python, TypeScript, and more) using their Plugin Development Kits (PDKs).
 
 **Essential Extism Resources:**
-- [Extism Documentation](https://extism.org/docs/overview) â€“ Core concepts and architecture
-- [Plugin Development Kits (PDKs)](https://extism.org/docs/concepts/pdk) â€“ Language-specific libraries for writing plugins
-- [Go PDK](https://github.com/extism/go-pdk) â€“ Recommended for Go plugins with TinyGo
-- [Rust PDK](https://github.com/extism/rust-pdk) â€“ For Rust plugins
-- [Python PDK](https://github.com/extism/python-pdk) â€“ Experimental Python support
-- [JavaScript PDK](https://github.com/extism/js-pdk) â€“ For TypeScript/JavaScript plugins
+- [Extism Documentation](https://extism.org/docs/overview) ï¿?Core concepts and architecture
+- [Plugin Development Kits (PDKs)](https://extism.org/docs/concepts/pdk) ï¿?Language-specific libraries for writing plugins
+- [Go PDK](https://github.com/extism/go-pdk) ï¿?Recommended for Go plugins with TinyGo
+- [Rust PDK](https://github.com/extism/rust-pdk) ï¿?For Rust plugins
+- [Python PDK](https://github.com/extism/python-pdk) ï¿?Experimental Python support
+- [JavaScript PDK](https://github.com/extism/js-pdk) ï¿?For TypeScript/JavaScript plugins
 
 ## Table of Contents
 
@@ -92,8 +92,8 @@ Folder = "/path/to/plugins"
 
 A Navidrome plugin is an `.ndp` package file (zip archive) containing:
 
-1. **`manifest.json`** â€“ Plugin metadata (name, author, version, permissions)
-2. **`plugin.wasm`** â€“ Compiled WebAssembly module with capability functions
+1. **`manifest.json`** ï¿?Plugin metadata (name, author, version, permissions)
+2. **`plugin.wasm`** ï¿?Compiled WebAssembly module with capability functions
 
 ### Plugin Package Structure
 
@@ -107,7 +107,7 @@ my-plugin.ndp (zip archive)
 
 Plugins are identified by their **filename** (without `.ndp` extension), not the manifest `name` field:
 
-- `my-plugin.ndp` â†’ plugin ID is `my-plugin`
+- `my-plugin.ndp` ï¿?plugin ID is `my-plugin`
 - The manifest `name` is the display name shown in the UI
 
 This allows users to have multiple instances of the same plugin with different configs by renaming the files.
@@ -138,7 +138,7 @@ Every plugin must include a `manifest.json` file. Example:
 
 Plugins can opt-in to experimental WebAssembly features that may change or be removed in future versions. Currently supported:
 
-- **`threads`** â€“ Enables WebAssembly threads support (for plugins compiled with multi-threading)
+- **`threads`** ï¿?Enables WebAssembly threads support (for plugins compiled with multi-threading)
 
 ```json
 {
@@ -260,9 +260,9 @@ Integrates with external scrobbling services. Export one or more of these functi
 
 On success, return `0`. On failure, use `pdk.SetError()` with one of these error types:
 
-- `scrobbler(not_authorized)` â€“ User needs to re-authorize
-- `scrobbler(retry_later)` â€“ Temporary failure, Navidrome will retry
-- `scrobbler(unrecoverable)` â€“ Permanent failure, scrobble discarded
+- `scrobbler(not_authorized)` ï¿?User needs to re-authorize
+- `scrobbler(retry_later)` ï¿?Temporary failure, Navidrome will retry
+- `scrobbler(unrecoverable)` ï¿?Permanent failure, scrobble discarded
 
 ```go
 import "github.com/navidrome/navidrome/plugins/pdk/go/scrobbler"
@@ -560,7 +560,7 @@ Access music library metadata and optionally read files from library directories
 }
 ```
 
-- `filesystem` â€“ Set to `true` to enable read-only access to library directories (default: `false`)
+- `filesystem` ï¿?Set to `true` to enable read-only access to library directories (default: `false`)
 
 **Host functions:**
 
@@ -741,8 +741,8 @@ Access user information for the users that the plugin has been granted access to
 
 **Important:** Before enabling a plugin that requires the `users` permission, an administrator must configure which users the plugin can access. This can be done in two ways:
 
-1. **Allow all users** â€“ Enable the "Allow all users" toggle in the plugin settings
-2. **Select specific users** â€“ Choose individual users from the user list
+1. **Allow all users** ï¿?Enable the "Allow all users" toggle in the plugin settings
+2. **Select specific users** ï¿?Choose individual users from the user list
 
 If neither option is configured, the plugin cannot be enabled.
 
@@ -750,7 +750,7 @@ If neither option is configured, the plugin cannot be enabled.
 
 | Function         | Parameters | Returns               |
 |------------------|------------|-----------------------|
-| `users_getusers` | â€“          | Array of User objects |
+| `users_getusers` | ï¿?         | Array of User objects |
 
 **User object fields:**
 
@@ -844,10 +844,10 @@ Plugins can be written in any language that Extism supports. Each language has i
 
 We recommend:
 
-- **Go** â€“ Best experience with [TinyGo](https://tinygo.org/) and the [Go PDK](https://github.com/extism/go-pdk)
-- **Rust** â€“ Excellent performance with the [Rust PDK](https://github.com/extism/rust-pdk)
-- **Python** â€“ Experimental support via [extism-py](https://github.com/extism/python-pdk)
-- **TypeScript** â€“ Experimental support via [extism-js](https://github.com/extism/js-pdk)
+- **Go** ï¿?Best experience with [TinyGo](https://tinygo.org/) and the [Go PDK](https://github.com/extism/go-pdk)
+- **Rust** ï¿?Excellent performance with the [Rust PDK](https://github.com/extism/rust-pdk)
+- **Python** ï¿?Experimental support via [extism-py](https://github.com/extism/python-pdk)
+- **TypeScript** ï¿?Experimental support via [extism-js](https://github.com/extism/js-pdk)
 
 ### Go with TinyGo (Recommended)
 
@@ -1031,7 +1031,7 @@ See [examples/](examples/) for complete working plugins:
 
 | Plugin                                                         | Language | Capabilities  | Host Services                              | Description                    |
 |----------------------------------------------------------------|----------|---------------|--------------------------------------------|--------------------------------|
-| [minimal](examples/minimal/)                                   | Go       | MetadataAgent | â€“                                          | Basic structure example        |
+| [minimal](examples/minimal/)                                   | Go       | MetadataAgent | ï¿?                                         | Basic structure example        |
 | [wikimedia](examples/wikimedia/)                               | Go       | MetadataAgent | HTTP                                       | Wikidata/Wikipedia integration |
 | [coverartarchive-py](examples/coverartarchive-py/)             | Python   | MetadataAgent | HTTP                                       | Cover Art Archive              |
 | [webhook-rs](examples/webhook-rs/)                             | Rust     | Scrobbler     | HTTP                                       | HTTP webhooks                  |
@@ -1047,13 +1047,13 @@ See [examples/](examples/) for complete working plugins:
 
 Plugins run in a secure WebAssembly sandbox provided by [Extism](https://extism.org/) and the [Wazero](https://wazero.io/) runtime:
 
-1. **Host Allowlisting** â€“ Only explicitly allowed hosts are accessible via HTTP/WebSocket
-2. **Limited File System** â€“ Plugins can only access library directories when explicitly granted the `library.filesystem` permission, and access is read-only
-3. **No Network Listeners** â€“ Plugins cannot bind ports
-4. **Config Isolation** â€“ Plugins only receive their own config section
-5. **Memory Limits** â€“ Controlled by the WebAssembly runtime
-6. **User-Scoped Authorization** â€“ Plugins with `subsonicapi` or `scrobbler` capabilities can only access/receive events for users assigned to them through Navidrome's configuration. The `users` permission is required for these features.
-7. **Users Permission** â€“ Plugins requesting user access must be explicitly configured with allowed users; sensitive data (passwords, emails) is never exposed
+1. **Host Allowlisting** ï¿?Only explicitly allowed hosts are accessible via HTTP/WebSocket
+2. **Limited File System** ï¿?Plugins can only access library directories when explicitly granted the `library.filesystem` permission, and access is read-only
+3. **No Network Listeners** ï¿?Plugins cannot bind ports
+4. **Config Isolation** ï¿?Plugins only receive their own config section
+5. **Memory Limits** ï¿?Controlled by the WebAssembly runtime
+6. **User-Scoped Authorization** ï¿?Plugins with `subsonicapi` or `scrobbler` capabilities can only access/receive events for users assigned to them through Navidrome's configuration. The `users` permission is required for these features.
+7. **Users Permission** ï¿?Plugins requesting user access must be explicitly configured with allowed users; sensitive data (passwords, emails) is never exposed
 
 
 ---
@@ -1072,6 +1072,6 @@ Plugins can be enabled/disabled via the Navidrome UI. The plugin state is persis
 
 ### Important Notes
 
-- **In-flight requests** â€“ When reloading, existing requests complete before the new version takes over
-- **Config changes** â€“ Changes to the plugin configuration in the UI are applied immediately
-- **Cache persistence** â€“ The in-memory cache is cleared when a plugin is unloaded
+- **In-flight requests** ï¿?When reloading, existing requests complete before the new version takes over
+- **Config changes** ï¿?Changes to the plugin configuration in the UI are applied immediately
+- **Cache persistence** ï¿?The in-memory cache is cleared when a plugin is unloaded

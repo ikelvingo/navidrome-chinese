@@ -71,7 +71,7 @@ func (r *sqlRepository) registerModel(instance any, filters map[string]filterFun
 //
 // If PreferSortTags is enabled, it will map the order fields to the corresponding sort expression,
 // which gives precedence to sort tags.
-// Ex: order_title => (coalesce(nullif(sort_title,”),order_title) collate nocase)
+// Ex: order_title => (coalesce(nullif(sort_title,ÿ¢?,order_title) collate nocase)
 // To avoid performance issues, indexes should be created for these sort expressions
 //
 // NOTE: if an individual item has spaces, it should be wrapped in parentheses. For example,

@@ -179,7 +179,7 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 	})
 
 	It("updatePlaylist can remove all songs from playlist", func() {
-		// Playlist has [song2, song3] â€” remove both
+		// Playlist has [song2, song3] ï¿?remove both
 		resp := doReq("updatePlaylist", "playlistId", playlistID,
 			"songIndexToRemove", "0", "songIndexToRemove", "1")
 		Expect(resp.Status).To(Equal(responses.StatusOK))

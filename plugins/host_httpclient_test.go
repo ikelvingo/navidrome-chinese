@@ -254,7 +254,7 @@ var _ = Describe("httpServiceImpl", func() {
 		It("should handle HEAD requests", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				Expect(r.Method).To(Equal("HEAD"))
-				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				w.WriteHeader(200)
 			}))
 			resp, err := svc.Send(context.Background(), host.HTTPRequest{
@@ -463,7 +463,7 @@ var _ = Describe("httpServiceImpl", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte("method:" + r.Method))
 			}))
-			// Empty method — Go's http.NewRequestWithContext normalizes "" to "GET"
+			// Empty method �?Go's http.NewRequestWithContext normalizes "" to "GET"
 			resp, err := svc.Send(context.Background(), host.HTTPRequest{
 				Method:    "",
 				URL:       ts.URL,

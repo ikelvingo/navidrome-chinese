@@ -49,7 +49,7 @@ Folder = "/path/to/plugins"
 
 ## Configuration
 
-Configure the inspection interval in the Navidrome UI (Settings â†’ Plugins â†’ library-inspector):
+Configure the inspection interval in the Navidrome UI (Settings â†?Plugins â†?library-inspector):
 
 | Key    | Description                              | Default      |
 |--------|------------------------------------------|--------------|

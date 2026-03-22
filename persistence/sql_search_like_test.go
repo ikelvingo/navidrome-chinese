@@ -54,7 +54,7 @@ var _ = Describe("likeSearchExpr", func() {
 	})
 
 	It("generates LIKE filters against core columns for single CJK word", func() {
-		expr := likeSearchExpr("media_file", "周杰伦")
+		expr := likeSearchExpr("media_file", "Í´Ì¯ÿ¢?)
 		sql, args, err := expr.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		// Should have OR between columns for the single word
@@ -65,12 +65,12 @@ var _ = Describe("likeSearchExpr", func() {
 		Expect(sql).To(ContainSubstring("media_file.album_artist LIKE"))
 		Expect(args).To(HaveLen(4))
 		for _, arg := range args {
-			Expect(arg).To(Equal("%周杰伦%"))
+			Expect(arg).To(Equal("%Í´Ì¯ÿ¢?"))
 		}
 	})
 
 	It("generates AND of OR groups for multi-word query", func() {
-		expr := likeSearchExpr("media_file", "周杰伦 greatest")
+		expr := likeSearchExpr("media_file", "Í´Ì¯ÿ¢?greatest")
 		sql, args, err := expr.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		// Two groups AND'd together, each with 4 columns OR'd
@@ -79,7 +79,7 @@ var _ = Describe("likeSearchExpr", func() {
 	})
 
 	It("uses correct columns for album table", func() {
-		expr := likeSearchExpr("album", "周杰伦")
+		expr := likeSearchExpr("album", "Í´Ì¯ÿ¢?)
 		sql, args, err := expr.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(sql).To(ContainSubstring("album.name LIKE"))
@@ -88,7 +88,7 @@ var _ = Describe("likeSearchExpr", func() {
 	})
 
 	It("uses correct columns for artist table", func() {
-		expr := likeSearchExpr("artist", "周杰伦")
+		expr := likeSearchExpr("artist", "Í´Ì¯ÿ¢?)
 		sql, args, err := expr.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(sql).To(ContainSubstring("artist.name LIKE"))
@@ -96,7 +96,7 @@ var _ = Describe("likeSearchExpr", func() {
 	})
 
 	It("returns nil for unknown table", func() {
-		Expect(likeSearchExpr("unknown_table", "周杰伦")).To(BeNil())
+		Expect(likeSearchExpr("unknown_table", "Í´Ì¯ÿ¢?)).To(BeNil())
 	})
 })
 

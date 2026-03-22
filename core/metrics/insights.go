@@ -107,7 +107,7 @@ func (c *insightsCollector) sendInsights(ctx context.Context) {
 		log.Trace(ctx, "Could not create Insights request", err)
 		return
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	resp, err := hc.Do(req) //nolint:gosec
 	if err != nil {
 		log.Trace(ctx, "Could not send Insights data", err)

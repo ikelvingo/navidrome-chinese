@@ -90,7 +90,7 @@ components:
                     description: Album is the album name.
                 artist:
                     type: string
-                    description: Artist is the formatted artist name for display (e.g., "Artist1 • Artist2").
+                    description: Artist is the formatted artist name for display (e.g., "Artist1 / Artist2").
                 albumArtist:
                     type: string
                     description: AlbumArtist is the formatted album artist name for display.

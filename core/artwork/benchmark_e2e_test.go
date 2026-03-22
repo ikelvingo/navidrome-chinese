@@ -23,7 +23,7 @@ import (
 // backed by either a real file cache or disabled cache depending on cacheSize.
 // Note: This benchmarks artwork.Get() directly (not the full HTTP handler), which covers
 // the critical path (source selection, decode, resize, encode, cache). This is a deliberate
-// spec deviation — the full HTTP round-trip benchmark requires significant infrastructure
+// spec deviation �?the full HTTP round-trip benchmark requires significant infrastructure
 // (DB, scanner, fake filesystem) and can be added later if HTTP overhead proves significant.
 //
 // Depends on fakeFolderRepo defined in reader_artist_test.go (same package, compiled together).

@@ -44,7 +44,7 @@ zip -j nowplaying-py.ndp manifest.json plugin.wasm
    Folder = "/path/to/plugins"
    ```
 
-3. Configure the plugin in the UI (Settings â†’ Plugins â†’ nowplaying-py)
+3. Configure the plugin in the UI (Settings â†?Plugins â†?nowplaying-py)
 
 ## Configuration
 

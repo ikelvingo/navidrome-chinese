@@ -29,15 +29,15 @@ var _ = Describe("Plugin Watcher", func() {
 
 			// Remove the auto-loaded plugin so tests can control loading
 			_ = manager.unloadPlugin("test-metadata-agent")
-			_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"+PackageExtension))
+			_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"㶧⑪ބ웗Ʝ⨧))
 			// Also remove from DB so tests start with a clean slate
 			_ = manager.ds.Plugin(ctx).Delete("test-metadata-agent")
 		})
 
 		// Helper to copy test plugin into the temp folder
 		copyTestPlugin := func() {
-			srcPath := filepath.Join(testdataDir, "test-metadata-agent"+PackageExtension)
-			destPath := filepath.Join(tmpDir, "test-metadata-agent"+PackageExtension)
+			srcPath := filepath.Join(testdataDir, "test-metadata-agent"㶧⑪ބ웗Ʝ⨧)
+			destPath := filepath.Join(tmpDir, "test-metadata-agent"㶧⑪ބ웗Ʝ⨧)
 			data, err := os.ReadFile(srcPath)
 			Expect(err).ToNot(HaveOccurred())
 			err = os.WriteFile(destPath, data, 0600)
@@ -50,7 +50,7 @@ var _ = Describe("Plugin Watcher", func() {
 			AfterEach(func() {
 				// Clean up: unload plugin if loaded, remove copied file, delete from DB
 				_ = manager.unloadPlugin("test-metadata-agent")
-				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"+PackageExtension))
+				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"㶧⑪ބ웗Ʝ⨧))
 				_ = manager.ds.Plugin(ctx).Delete("test-metadata-agent")
 			})
 
@@ -108,7 +108,7 @@ var _ = Describe("Plugin Watcher", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Remove the file - plugin should be unloaded and removed from DB
-				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"+PackageExtension))
+				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"㶧⑪ބ웗Ʝ⨧))
 				manager.processPluginEvent("test-metadata-agent")
 
 				// Should be unloaded

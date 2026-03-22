@@ -71,7 +71,7 @@ export const SongInfo = (props) => {
       <ArtistLinkField source="artist" record={record} limit={Infinity} />
     ),
     genre: (
-      <FunctionField render={(r) => r.genres?.map((g) => g.name).join(' • ')} />
+      <FunctionField render={(r) => r.genres?.map((g) => g.name).join(" • ")} />
     ),
     compilation: <BooleanField source="compilation" />,
     bitRate: <BitrateField source="bitRate" />,
@@ -178,7 +178,7 @@ export const SongInfo = (props) => {
                   {name}:
                 </TableCell>
                 <TableCell align="left" className={classes.value}>
-                  {values.join(' • ')}
+                  {values.join(" • ")}
                 </TableCell>
               </TableRow>
             ))}
@@ -205,7 +205,7 @@ export const SongInfo = (props) => {
                     {key}:
                   </TableCell>
                   <TableCell align="left" className={classes.value}>
-                    {value.join(' • ')}
+                    {value.join(" • ")}
                   </TableCell>
                 </TableRow>
               ))}

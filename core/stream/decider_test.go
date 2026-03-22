@@ -648,7 +648,7 @@ var _ = Describe("Decider", func() {
 				// DSD64 2822400 / 8 = 352800, capped by MP3 max of 48000
 				Expect(decision.TranscodeStream.SampleRate).To(Equal(48000))
 				Expect(decision.TargetSampleRate).To(Equal(48000))
-				// DSD 1-bit â†’ 24-bit PCM
+				// DSD 1-bit ï¿?24-bit PCM
 				Expect(decision.TranscodeStream.BitDepth).To(Equal(24))
 				Expect(decision.TargetBitDepth).To(Equal(24))
 			})
@@ -667,7 +667,7 @@ var _ = Describe("Decider", func() {
 				// DSD64 2822400 / 8 = 352800, FLAC has no hard max
 				Expect(decision.TranscodeStream.SampleRate).To(Equal(352800))
 				Expect(decision.TargetSampleRate).To(Equal(352800))
-				// DSD 1-bit â†’ 24-bit PCM
+				// DSD 1-bit ï¿?24-bit PCM
 				Expect(decision.TranscodeStream.BitDepth).To(Equal(24))
 				Expect(decision.TargetBitDepth).To(Equal(24))
 			})
@@ -694,7 +694,7 @@ var _ = Describe("Decider", func() {
 				// DSD64 2822400 / 8 = 352800, capped by codec profile limit of 48000
 				Expect(decision.TranscodeStream.SampleRate).To(Equal(48000))
 				Expect(decision.TargetSampleRate).To(Equal(48000))
-				// DSD 1-bit â†’ 24-bit PCM
+				// DSD 1-bit ï¿?24-bit PCM
 				Expect(decision.TranscodeStream.BitDepth).To(Equal(24))
 				Expect(decision.TargetBitDepth).To(Equal(24))
 			})
@@ -718,7 +718,7 @@ var _ = Describe("Decider", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanTranscode).To(BeTrue())
-				// DSD 1-bit â†’ 24-bit PCM, then capped by codec profile limit to 16-bit
+				// DSD 1-bit ï¿?24-bit PCM, then capped by codec profile limit to 16-bit
 				Expect(decision.TranscodeStream.BitDepth).To(Equal(16))
 				Expect(decision.TargetBitDepth).To(Equal(16))
 			})
@@ -1017,7 +1017,7 @@ var _ = Describe("Decider", func() {
 						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}},
 					},
 				}
-				// No override in context â€” client profiles used as-is
+				// No override in context ï¿?client profiles used as-is
 				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeTrue())
@@ -1151,7 +1151,7 @@ var _ = Describe("Decider", func() {
 		It("skips ffprobe when ProbeData is already set", func() {
 			mf := withProbe(&model.MediaFile{ID: "probe-2", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2})
 
-			// Set error on mock â€” if ffprobe were called, this would fail
+			// Set error on mock ï¿?if ffprobe were called, this would fail
 			ff.Error = fmt.Errorf("should not be called")
 
 			svc := NewTranscodeDecider(ds, ff).(*deciderService)
@@ -1176,7 +1176,7 @@ var _ = Describe("Decider", func() {
 			conf.Server.DevEnableMediaFileProbe = false
 
 			mf := &model.MediaFile{ID: "probe-4", Suffix: "mp3"}
-			// Set a result â€” if ffprobe were called, ProbeData would be populated
+			// Set a result ï¿?if ffprobe were called, ProbeData would be populated
 			ff.ProbeAudioResult = &ffmpeg.AudioProbeResult{Codec: "mp3"}
 
 			svc := NewTranscodeDecider(ds, ff).(*deciderService)

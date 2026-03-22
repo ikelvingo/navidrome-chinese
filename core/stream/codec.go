@@ -19,7 +19,7 @@ func normalizeProbeCodec(codec string) string {
 }
 
 // isLosslessFormat returns true if the format is a known lossless audio codec/format.
-// Detection is based on codec name only, not bit depth — some lossy codecs (e.g. ADPCM)
+// Detection is based on codec name only, not bit depth - some lossy codecs (e.g. ADPCM)
 // report non-zero bits_per_sample in ffprobe, so bit depth alone is not a reliable signal.
 //
 // Note: core/ffmpeg has a separate isLosslessOutputFormat that covers only formats

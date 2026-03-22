@@ -95,9 +95,9 @@ export const ArtistLinkField = ({ record, className, limit, source }) => {
         )
 
         if (uniqueRemixers.length > 0) {
-          artistsLinks.push(' • ')
+          artistsLinks.push(" • ")
           uniqueRemixers.forEach((remixer, index) => {
-            if (index > 0) artistsLinks.push(' • ')
+            if (index > 0) artistsLinks.push(" • ")
             artistsLinks.push(
               <ALink
                 artist={remixer}
@@ -157,7 +157,7 @@ export const ArtistLinkField = ({ record, className, limit, source }) => {
     artistsList.push(<span key="more">...</span>)
   }
 
-  return <>{intersperse(artistsList, ' • ')}</>
+  return <>{intersperse(artistsList, " • ")}</>
 }
 
 ArtistLinkField.propTypes = {

@@ -66,7 +66,7 @@
             "name": "artist2"
           }
         ],
-        "displayArtist": "artist 1 \u0026 artist 2",
+        "displayArtist": "artist 1 | artist 2",
         "albumArtists": [
           {
             "id": "1",
@@ -77,7 +77,7 @@
             "name": "album artist2"
           }
         ],
-        "displayAlbumArtist": "album artist 1 \u0026 album artist 2",
+        "displayAlbumArtist": "album artist 1 | album artist 2",
         "contributors": [
           {
             "role": "role1",
@@ -109,7 +109,7 @@
             }
           }
         ],
-        "displayComposer": "composer 1 \u0026 composer 2",
+        "displayComposer": "composer 1 | composer 2",
         "explicitStatus": "clean"
       },
       {

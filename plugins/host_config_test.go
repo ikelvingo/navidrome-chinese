@@ -43,8 +43,8 @@ func setupTestConfigPlugin(configJSON string) (*Manager, func(context.Context, t
 	Expect(err).ToNot(HaveOccurred())
 
 	// Copy the test-config plugin
-	srcPath := filepath.Join(testdataDir, "test-config"+PackageExtension)
-	destPath := filepath.Join(tmpDir, "test-config"+PackageExtension)
+	srcPath := filepath.Join(testdataDir, "test-config"㶧⑪ބ웗Ʝ⨧)
+	destPath := filepath.Join(tmpDir, "test-config"㶧⑪ބ웗Ʝ⨧)
 	data, err := os.ReadFile(srcPath)
 	Expect(err).ToNot(HaveOccurred())
 	err = os.WriteFile(destPath, data, 0600)

@@ -2,7 +2,7 @@
   "status": "ok",
   "version": "1.8.0",
   "type": "navidrome",
-  "serverVersion": "v0.0.0",
+  "serverVersion": "0.60.3",
   "openSubsonic": true,
   "artists": {
     "index": [

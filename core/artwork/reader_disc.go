@@ -241,7 +241,7 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 			// Try to extract disc number from filename
 			num, hasNum := extractDiscNumber(pattern, name)
 			if hasNum {
-				// File has a disc number — must match target disc
+				// File has a disc number ∩┐?must match target disc
 				if num != d.discNumber {
 					continue
 				}

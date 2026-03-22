@@ -29,7 +29,7 @@ This plugin implements multiple capabilities to demonstrate the nd-pdk library:
 
 ## Configuration
 
-Configure in the Navidrome UI (Settings â†’ Plugins â†’ discord-rich-presence-rs):
+Configure in the Navidrome UI (Settings â†?Plugins â†?discord-rich-presence-rs):
 
 | Key           | Description                          | Example                   |
 |---------------|--------------------------------------|---------------------------|
@@ -66,7 +66,7 @@ make discord-rich-presence-rs.ndp
 
 1. Build the plugin using the command above
 2. Copy the `.ndp` file to your Navidrome plugins directory
-3. Enable and configure the plugin in the Navidrome UI (Settings â†’ Plugins)
+3. Enable and configure the plugin in the Navidrome UI (Settings â†?Plugins)
 4. Restart Navidrome if needed
 
 ## Using nd-pdk Library

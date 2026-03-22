@@ -111,7 +111,7 @@ func (pls Playlist) CoverArtID() ArtworkID {
 
 // UploadedImagePath returns the absolute filesystem path for a manually uploaded
 // playlist cover image. Returns empty string if no image has been uploaded.
-// This does NOT cover sidecar images or external URLs — those are resolved
+// This does NOT cover sidecar images or external URLs ﻡ؟?those are resolved
 // by the artwork reader's fallback chain.
 func (pls Playlist) UploadedImagePath() string {
 	return UploadedImagePath(consts.EntityPlaylist, pls.UploadedImage)

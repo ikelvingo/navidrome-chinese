@@ -71,7 +71,7 @@ func buildTestPlugins(t *testing.T, path string) {
 // It creates a temp directory, copies the test-metadata-agent plugin, and starts the manager.
 // Returns the manager, temp directory path, and a cleanup function.
 func createTestManager(pluginConfig map[string]map[string]string) (*Manager, string) {
-	return createTestManagerWithPlugins(pluginConfig, "test-metadata-agent"+PackageExtension)
+	return createTestManagerWithPlugins(pluginConfig, "test-metadata-agent"㶧⑪ބ웗Ʝ⨧)
 }
 
 // createTestManagerWithPlugins creates a new plugin Manager with the given plugin config

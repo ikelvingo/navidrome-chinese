@@ -167,7 +167,7 @@ var _ = Describe("TaskQueueService", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			// Next queue should fail â€” no budget remaining
+			// Next queue should fail ï¿?no budget remaining
 			err = service.CreateQueue(ctx, "over-budget", host.QueueConfig{
 				Concurrency: 1,
 			})
@@ -298,7 +298,7 @@ var _ = Describe("TaskQueueService", func() {
 			// Wait for the blocker task to start running
 			Eventually(started).WithTimeout(5 * time.Second).Should(BeClosed())
 
-			// Enqueue a second task â€” it stays pending since the worker is busy
+			// Enqueue a second task ï¿?it stays pending since the worker is busy
 			taskID, err := service.Enqueue(ctx, "cancel-test", []byte("cancel-me"))
 			Expect(err).ToNot(HaveOccurred())
 
@@ -365,7 +365,7 @@ var _ = Describe("TaskQueueService", func() {
 			// Wait for the blocker task to start running
 			Eventually(started).WithTimeout(5 * time.Second).Should(BeClosed())
 
-			// Enqueue several more tasks â€” they stay pending since the worker is busy
+			// Enqueue several more tasks ï¿?they stay pending since the worker is busy
 			var pendingIDs []string
 			for i := 0; i < 3; i++ {
 				taskID, err := service.Enqueue(ctx, "clear-test", []byte(fmt.Sprintf("task-%d", i)))
@@ -428,7 +428,7 @@ var _ = Describe("TaskQueueService", func() {
 			// Wait for it to start running
 			Eventually(started).WithTimeout(5 * time.Second).Should(Receive())
 
-			// Clear the queue â€” should not affect the running task
+			// Clear the queue ï¿?should not affect the running task
 			cleared, err := service.ClearQueue(ctx, "clear-running")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(cleared).To(Equal(int64(0)))
@@ -1198,7 +1198,7 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 			// Wait for the first task to complete (burst token)
 			time.Sleep(200 * time.Millisecond)
 
-			// Clear the queue â€” should cancel remaining pending tasks
+			// Clear the queue ï¿?should cancel remaining pending tasks
 			output, err := callTestTaskQueue(ctx, testTaskQueueInput{
 				Operation: "clear_queue",
 				QueueName: "test-clear",

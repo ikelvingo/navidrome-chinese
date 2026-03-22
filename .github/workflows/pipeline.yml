@@ -19,46 +19,6 @@ env:
   IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
 
 jobs:
-  git-version:
-    name: Get version info
-    runs-on: ubuntu-latest
-    outputs:
-      git_tag: ${{ steps.git-version.outputs.GIT_TAG }}
-      git_sha: ${{ steps.git-version.outputs.GIT_SHA }}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Show git version info
-        run: |
-          echo "git describe (dirty): $(git describe --dirty --always --tags)"
-          echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
-          echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
-          echo "github_ref: $GITHUB_REF"
-          echo "github_head_sha: ${{ github.event.pull_request.head.sha }}"
-          git tag -l
-      - name: Determine git current SHA and latest tag
-        id: git-version
-        run: |
-          GIT_TAG=$(git tag --sort=-committerdate | head -n 1)
-          if [ -n "$GIT_TAG" ]; then
-            if [[ "$GITHUB_REF" != refs/tags/* ]]; then
-              GIT_TAG=${GIT_TAG}-SNAPSHOT
-            fi
-            echo "GIT_TAG=$GIT_TAG" >> $GITHUB_OUTPUT
-          fi
-          GIT_SHA=$(git rev-parse --short HEAD)
-          PR_NUM=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
-          if [[ $PR_NUM != "null" ]]; then
-            GIT_SHA=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-8)
-            GIT_SHA="pr-${PR_NUM}/${GIT_SHA}"
-          fi
-          echo "GIT_SHA=$GIT_SHA" >> $GITHUB_OUTPUT
-          
-          echo "GIT_TAG=$GIT_TAG"
-          echo "GIT_SHA=$GIT_SHA"
 
   go-lint:
     name: Lint Go code
@@ -190,7 +150,7 @@ jobs:
 
   build:
     name: Build
-    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
+    needs: [js, go, go-lint, i18n-lint, check-push-enabled]
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, linux/riscv64, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
@@ -200,8 +160,6 @@ jobs:
       IS_ARMV5: ${{ matrix.platform == 'linux/arm/v5' && 'true' || 'false' }}
       IS_DOCKER_PUSH_CONFIGURED: ${{ needs.check-push-enabled.outputs.is_enabled == 'true' }}
       DOCKER_BUILD_SUMMARY: false
-      GIT_SHA: ${{ needs.git-version.outputs.git_sha }}
-      GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
     steps:
       - name: Sanitize platform name
         id: set-platform
@@ -230,8 +188,6 @@ jobs:
             type=local,dest=./output/${{ env.PLATFORM }}
           target: binary
           build-args: |
-            GIT_SHA=${{ env.GIT_SHA }}
-            GIT_TAG=${{ env.GIT_TAG }}
             CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
 
       - name: Upload Binaries
@@ -251,8 +207,6 @@ jobs:
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.docker.outputs.labels }}
           build-args: |
-            GIT_SHA=${{ env.GIT_SHA }}
-            GIT_TAG=${{ env.GIT_TAG }}
             CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
           outputs: |
             type=image,name=${{ steps.docker.outputs.hub_repository }},push-by-digest=true,name-canonical=true,push=${{ steps.docker.outputs.hub_enabled }}
@@ -368,7 +322,7 @@ jobs:
 
   msi:
     name: Build Windows installers
-    needs: [build, git-version]
+    needs: [build]
     runs-on: ubuntu-24.04
 
     steps:
@@ -384,12 +338,10 @@ jobs:
         run: sudo apt-get install -y wixl jq
 
       - name: Build MSI
-        env:
-          GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
         run: |
           rm -rf binaries/msi
-          sudo GIT_TAG=$GIT_TAG release/wix/build_msi.sh ${GITHUB_WORKSPACE} 386
-          sudo GIT_TAG=$GIT_TAG release/wix/build_msi.sh ${GITHUB_WORKSPACE} amd64
+          sudo release/wix/build_msi.sh ${GITHUB_WORKSPACE} 386
+          sudo release/wix/build_msi.sh ${GITHUB_WORKSPACE} amd64
           du -h binaries/msi/*.msi
 
       - name: Upload MSI files

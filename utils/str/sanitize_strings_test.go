@@ -14,7 +14,7 @@ var _ = Describe("Sanitize Strings", func() {
 		})
 
 		It("removes accents", func() {
-			Expect(str.SanitizeStrings("Quintão")).To(Equal("quintao"))
+			Expect(str.SanitizeStrings("QuintûÈo")).To(Equal("quintao"))
 		})
 
 		It("remove extra spaces", func() {
@@ -22,11 +22,11 @@ var _ = Describe("Sanitize Strings", func() {
 		})
 
 		It("remove duplicated words", func() {
-			Expect(str.SanitizeStrings("legião urbana", "urbana legiÃo")).To(Equal("legiao urbana"))
+			Expect(str.SanitizeStrings("legiûÈo urbana", "urbana legiûo")).To(Equal("legiao urbana"))
 		})
 
 		It("remove symbols", func() {
-			Expect(str.SanitizeStrings("Tom’s Diner ' “40” ‘A’")).To(Equal("40 a diner toms"))
+			Expect(str.SanitizeStrings("Tomãs Diner ' ÿ¢?0ÿ¢?ãAÿ¢?)).To(Equal("40 a diner toms"))
 		})
 
 		It("remove opening brackets", func() {
@@ -39,7 +39,7 @@ var _ = Describe("Sanitize Strings", func() {
 
 		It("normalizes utf chars", func() {
 			// These uses different types of hyphens
-			Expect(str.SanitizeStrings("k—os", "k−os")).To(Equal("k-os"))
+			Expect(str.SanitizeStrings("kãos", "kãos")).To(Equal("k-os"))
 		})
 
 		It("remove commas", func() {
@@ -54,13 +54,13 @@ var _ = Describe("Sanitize Strings", func() {
 			conf.Server.IgnoredArticles = "The O"
 		})
 		It("sanitize accents", func() {
-			Expect(str.SanitizeFieldForSorting("Céu")).To(Equal("ceu"))
+			Expect(str.SanitizeFieldForSorting("Cûˋu")).To(Equal("ceu"))
 		})
 		It("removes articles", func() {
 			Expect(str.SanitizeFieldForSorting("The Beatles")).To(Equal("the beatles"))
 		})
 		It("removes accented articles", func() {
-			Expect(str.SanitizeFieldForSorting("Õ Blésq Blom")).To(Equal("o blesq blom"))
+			Expect(str.SanitizeFieldForSorting("û Blûˋsq Blom")).To(Equal("o blesq blom"))
 		})
 	})
 
@@ -69,13 +69,13 @@ var _ = Describe("Sanitize Strings", func() {
 			conf.Server.IgnoredArticles = "The O"
 		})
 		It("sanitize accents", func() {
-			Expect(str.SanitizeFieldForSortingNoArticle("Céu")).To(Equal("ceu"))
+			Expect(str.SanitizeFieldForSortingNoArticle("Cûˋu")).To(Equal("ceu"))
 		})
 		It("removes articles", func() {
 			Expect(str.SanitizeFieldForSortingNoArticle("The Beatles")).To(Equal("beatles"))
 		})
 		It("removes accented articles", func() {
-			Expect(str.SanitizeFieldForSortingNoArticle("Õ Blésq Blom")).To(Equal("blesq blom"))
+			Expect(str.SanitizeFieldForSortingNoArticle("û Blûˋsq Blom")).To(Equal("blesq blom"))
 		})
 	})
 

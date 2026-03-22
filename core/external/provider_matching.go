@@ -363,7 +363,7 @@ func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agent
 // if durationMs is 0 (unknown), so duration does not influence scoring.
 func durationProximity(durationMs uint32, mediaFileDurationSec float32) float64 {
 	if durationMs <= 0 {
-		return 1.0 // Unknown duration — don't penalise
+		return 1.0 // Unknown duration ÿ¢?don't penalise
 	}
 	durationSec := float64(durationMs) / 1000.0
 	diff := math.Abs(durationSec - float64(mediaFileDurationSec))
@@ -462,7 +462,7 @@ func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, by
 		if prevSong, alreadyAdded := addedBy[mf.ID]; alreadyAdded {
 			// Only add duplicate if input songs are identical
 			if t != prevSong {
-				continue // Different input songs → skip mismatch-induced duplicate
+				continue // Different input songs ÿ¢?skip mismatch-induced duplicate
 			}
 		} else {
 			addedBy[mf.ID] = t

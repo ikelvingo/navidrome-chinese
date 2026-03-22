@@ -436,7 +436,7 @@ The scanner's behavior can be customized through several configuration settings 
 | `Scanner.Schedule`      | Cron expression or duration for scheduled scans (e.g., "@daily") | "0" (disabled) |
 | `Scanner.ScanOnStartup` | Whether to scan when the server starts                           | true           |
 | `Scanner.WatcherWait`   | Delay before triggering scan after file changes detected         | 5s             |
-| `Scanner.ArtistJoiner`  | String used to join multiple artists in track metadata           | " • "          |
+| `Scanner.ArtistJoiner`  | String used to join multiple artists in track metadata           | " / "          |
 
 ### Playlist Processing
 

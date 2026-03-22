@@ -29,7 +29,7 @@ type GetLyricsResponse struct {
 }
 
 // LyricsText represents a single set of lyrics in raw text format.
-// Text can be plain text or LRC format — Navidrome will parse it.
+// Text can be plain text or LRC format â€?Navidrome will parse it.
 type LyricsText struct {
 	Lang string `json:"lang,omitempty"`
 	Text string `json:"text"`
@@ -43,7 +43,7 @@ type TrackInfo struct {
 	Title string `json:"title"`
 	// Album is the album name.
 	Album string `json:"album"`
-	// Artist is the formatted artist name for display (e.g., "Artist1 • Artist2").
+	// Artist is the formatted artist name for display (e.g., "Artist1 / Artist2").
 	Artist string `json:"artist"`
 	// AlbumArtist is the formatted album artist name for display.
 	AlbumArtist string `json:"albumArtist"`

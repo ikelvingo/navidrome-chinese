@@ -19,7 +19,7 @@ type GetLyricsResponse struct {
 }
 
 // LyricsText represents a single set of lyrics in raw text format.
-// Text can be plain text or LRC format — Navidrome will parse it.
+// Text can be plain text or LRC format - Navidrome will parse it.
 type LyricsText struct {
 	Lang string `json:"lang,omitempty"`
 	Text string `json:"text"`

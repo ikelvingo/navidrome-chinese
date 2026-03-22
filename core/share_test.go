@@ -56,19 +56,19 @@ var _ = Describe("Share", func() {
 			})
 
 			It("does not truncate CJK labels shorter than 30 runes", func() {
-				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "456", Title: "青春コンプレックス"})
+				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "456", Title: "éæ¥ã³ã³ãã¬ãã¯ï¿?})
 				entity := &model.Share{Description: "test", ResourceIDs: "456"}
 				_, err := repo.Save(entity)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(entity.Contents).To(Equal("青春コンプレックス"))
+				Expect(entity.Contents).To(Equal("éæ¥ã³ã³ãã¬ãã¯ï¿?))
 			})
 
 			It("truncates CJK labels longer than 30 runes", func() {
-				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "789", Title: "私の中の幻想的世界観及びその顕現を想起させたある現実での出来事に関する一考察"})
+				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "789", Title: "ç§ã®ä¸­ã®å¹»æ³çä¸çè¦³åã³ãã®é¡ç¾ãæ³èµ·ãããããç¾å®ã§ã®åºæ¥äºã«é¢ããä¸èå¯"})
 				entity := &model.Share{Description: "test", ResourceIDs: "789"}
 				_, err := repo.Save(entity)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(entity.Contents).To(Equal("私の中の幻想的世界観及びその顕現を想起させたある現実で..."))
+				Expect(entity.Contents).To(Equal("ç§ã®ä¸­ã®å¹»æ³çä¸çè¦³åã³ãã®é¡ç¾ãæ³èµ·ãããããç¾å®ï¿?.."))
 			})
 		})
 

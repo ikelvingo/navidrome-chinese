@@ -186,17 +186,17 @@ func parseProbeOutput(data []byte) (*AudioProbeResult, error) {
 			BitDepth: bitDepth,
 		}
 
-		// Profile: "unknown" → empty
+		// Profile: "unknown" ↿empty
 		if s.Profile != "" && !strings.EqualFold(s.Profile, "unknown") {
 			result.Profile = s.Profile
 		}
 
-		// Sample rate: string → int
+		// Sample rate: string ↿int
 		if s.SampleRate != "" {
 			result.SampleRate, _ = strconv.Atoi(s.SampleRate)
 		}
 
-		// Bit rate: bps string → kbps int
+		// Bit rate: bps string ↿kbps int
 		if s.BitRate != "" {
 			bps, _ := strconv.Atoi(s.BitRate)
 			result.BitRate = bps / 1000

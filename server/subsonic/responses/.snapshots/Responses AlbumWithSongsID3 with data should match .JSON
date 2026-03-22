@@ -71,7 +71,7 @@
         "name": "artist2"
       }
     ],
-    "displayArtist": "artist1 \u0026 artist2",
+    "displayArtist": "artist1 | artist2",
     "explicitStatus": "clean",
     "version": "Deluxe Edition",
     "song": [
@@ -134,7 +134,7 @@
             "name": "artist2"
           }
         ],
-        "displayArtist": "artist1 \u0026 artist2",
+        "displayArtist": "artist1 | artist2",
         "albumArtists": [
           {
             "id": "1",
@@ -145,7 +145,7 @@
             "name": "album artist2"
           }
         ],
-        "displayAlbumArtist": "album artist1 \u0026 album artist2",
+        "displayAlbumArtist": "album artist1 | album artist2",
         "contributors": [
           {
             "role": "role1",
@@ -163,7 +163,7 @@
             }
           }
         ],
-        "displayComposer": "composer 1 \u0026 composer 2",
+        "displayComposer": "composer 1 | composer 2",
         "explicitStatus": "clean"
       },
       {

@@ -1,4 +1,4 @@
-﻿package netease
+package netease
 
 import (
 	"context"
@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ikelvingo/navidrome/conf"
-	"github.com/ikelvingo/navidrome/consts"
-	"github.com/ikelvingo/navidrome/core/agents"
-	"github.com/ikelvingo/navidrome/log"
-	"github.com/ikelvingo/navidrome/model"
-	"github.com/ikelvingo/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/cache"
 )
 
 const (

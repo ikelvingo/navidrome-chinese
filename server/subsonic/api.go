@@ -325,26 +325,26 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	var err error
 	switch f {
 	case "json":
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
 		response, err = json.Marshal(wrapper)
 	case "jsonp":
 		callback, _ := p.String("callback")
 		if !validJSIdentifier.MatchString(callback) {
 			log.Warn(r.Context(), "Invalid JSONP callback parameter", "callback", callback)
-			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			errResp := newResponse()
 			errResp.Status = responses.StatusFailed
 			errResp.Error = &responses.Error{Code: responses.ErrorGeneric, Message: "invalid callback parameter"}
 			response, _ = json.Marshal(responses.JsonWrapper{Subsonic: *errResp})
 			break
 		}
-		w.Header().Set("Content-Type", "application/javascript")
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
 		response, err = json.Marshal(wrapper)
 		response = fmt.Appendf(nil, "%s(%s)", callback, response)
 	default:
-		w.Header().Set("Content-Type", "application/xml")
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 		response, err = xml.Marshal(payload)
 	}
 	// This should never happen, but if it does, we need to know

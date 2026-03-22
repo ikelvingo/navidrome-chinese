@@ -22,7 +22,7 @@ func Compare(a, b string) int {
 
 		switch {
 		case da && db:
-			// Both are in digit sequences — compare numerically.
+			// Both are in digit sequences - compare numerically.
 			endA := ia
 			for endA < len(a) && isDigit(a[endA]) {
 				endA++
@@ -71,7 +71,7 @@ func compareNumbers(a, b string) int {
 		return len(sa) - len(sb)
 	}
 
-	// Same length — compare digit by digit.
+	// Same length - compare digit by digit.
 	for i := range len(sa) {
 		if sa[i] != sb[i] {
 			return int(sa[i]) - int(sb[i])

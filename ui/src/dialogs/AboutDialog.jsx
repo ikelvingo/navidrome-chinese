@@ -74,13 +74,13 @@ const links = {
   reddit: 'reddit.com/r/Navidrome',
   twitter: 'twitter.com/navidrome',
   discord: 'discord.gg/xh7j7yF',
-  source: 'github.com/navidrome/navidrome',
+  source: 'github.com/ikelvingo/navidrome-chinese',
   bugReports: 'github.com/navidrome/navidrome/issues/new/choose',
   featureRequests: 'github.com/navidrome/navidrome/discussions/new',
 }
 
 const LinkToVersion = ({ version }) => {
-  if (version === 'dev') {
+  if (version === 'ces') {
     return <>{version}</>
   }
 

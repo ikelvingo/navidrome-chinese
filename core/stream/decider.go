@@ -76,7 +76,7 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 		log.Trace(ctx, "Global bitrate constraint exceeded, skipping direct play",
 			"sourceBitrate", src.Bitrate, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
 		decision.TranscodeReasons = append(decision.TranscodeReasons, "audio bitrate not supported")
-		// Skip direct play profiles entirely — global constraint fails
+		// Skip direct play profiles entirely ï¿?global constraint fails
 	} else {
 		// Try direct play profiles, collecting reasons for each failure
 		for _, profile := range clientInfo.DirectPlayProfiles {
@@ -232,7 +232,7 @@ func (s *deciderService) checkDirectPlayProfile(src *Details, profile *DirectPla
 
 // computeTranscodedStream attempts to build a valid transcoded stream for the given profile.
 // Returns the stream details and the internal transcoding format (which may differ from the
-// response container when a codec fallback occurs, e.g., "mp4"→"aac").
+// response container when a codec fallback occurs, e.g., "mp4"ï¿?aac").
 // Returns nil, "" if the profile cannot produce a valid output.
 func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Details, profile *Profile, clientInfo *ClientInfo) (*Details, string) {
 	// Check protocol (only http for now)
@@ -332,13 +332,13 @@ func LookupTranscodeCommand(ctx context.Context, ds model.DataStore, format stri
 
 // resolveTargetFormat determines the response container and internal target format
 // from the profile's Container and AudioCodec fields. When an AudioCodec is specified
-// it is preferred as targetFormat (e.g. container "mp4" with audioCodec "aac" → targetFormat "aac").
+// it is preferred as targetFormat (e.g. container "mp4" with audioCodec "aac" ï¿?targetFormat "aac").
 func resolveTargetFormat(profile *Profile) (responseContainer, targetFormat string) {
 	responseContainer = strings.ToLower(profile.Container)
 	targetFormat = responseContainer
 
 	// Prefer the audioCodec as targetFormat when provided (handles container-to-codec
-	// mapping like "mp4" → "aac", "ogg" → "opus").
+	// mapping like "mp4" ï¿?"aac", "ogg" ï¿?"opus").
 	if profile.AudioCodec != "" {
 		targetFormat = strings.ToLower(profile.AudioCodec)
 	}
@@ -439,7 +439,7 @@ func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) 
 
 	if err := s.ds.MediaFile(ctx).UpdateProbeData(mf.ID, mf.ProbeData); err != nil {
 		log.Error(ctx, "Failed to persist probe data", "mediaID", mf.ID, err)
-		// Don't fail the decision — we have the data in memory
+		// Don't fail the decision ï¿?we have the data in memory
 	}
 
 	log.Debug(ctx, "Probed media file", "mediaID", mf.ID, "codec", result.Codec,

@@ -344,8 +344,8 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 
 		It("matches tracks with combined album and artist criteria", func() {
-			// albumLoved=true â†’ songs from album 103 (1003, 1004, 1005, 1006)
-			// artistLoved=true â†’ songs with artist 3 (1001, 1002)
+			// albumLoved=true ï¿?songs from album 103 (1003, 1004, 1005, 1006)
+			// artistLoved=true ï¿?songs with artist 3 (1001, 1002)
 			// Using Any: union of both sets
 			rules := &criteria.Criteria{
 				Expression: criteria.Any{

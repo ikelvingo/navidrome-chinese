@@ -156,7 +156,7 @@ const NowPlayingItem = React.memo(
               &nbsp;-&nbsp;{nowPlayingEntry.title}
             </div>
           }
-          secondary={`${nowPlayingEntry.username}${nowPlayingEntry.playerName ? ` (${nowPlayingEntry.playerName})` : ''} • ${translate('nowPlaying.minutesAgo', { smart_count: nowPlayingEntry.minutesAgo })}`}
+          secondary={`${nowPlayingEntry.username}${nowPlayingEntry.playerName ? ` (${nowPlayingEntry.playerName})` : ''} | ${translate('nowPlaying.minutesAgo', { smart_count: nowPlayingEntry.minutesAgo })}`}
         />
       </ListItem>
     )

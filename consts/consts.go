@@ -182,7 +182,7 @@ var (
 	UnknownArtistID     = id.NewHash(strings.ToLower(UnknownArtist))
 	VariousArtistsMbzId = "89ad4ac3-39f7-470e-963a-56509c546377"
 
-	ArtistJoiner = " • "
+	ArtistJoiner = " / "
 )
 
 var (

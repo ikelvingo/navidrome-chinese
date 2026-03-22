@@ -27,12 +27,12 @@ var _ = Describe("ParseIndexGroup", func() {
 		})
 	})
 	Context("Correctly parses UTF-8", func() {
-		parsed := ParseIndexGroups("UTF8(宇A海)")
+		parsed := ParseIndexGroups("UTF8(å®‡Aæµ?")
 		It("parses the groups correctly", func() {
 			Expect(parsed).To(HaveLen(3))
-			Expect(parsed["宇"]).To(Equal("UTF8"))
+			Expect(parsed["å®?]).To(Equal("UTF8"))
 			Expect(parsed["A"]).To(Equal("UTF8"))
-			Expect(parsed["海"]).To(Equal("UTF8"))
+			Expect(parsed["æµ?]).To(Equal("UTF8"))
 		})
 	})
 })

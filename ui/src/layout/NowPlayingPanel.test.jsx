@@ -136,7 +136,7 @@ describe('<NowPlayingPanel />', () => {
     fireEvent.click(screen.getByRole('button'))
     await waitFor(() => {
       expect(
-        screen.getByText('u1 (Chrome Browser) • nowPlaying.minutesAgo'),
+        screen.getByText('u1 (Chrome Browser) | nowPlaying.minutesAgo'),
       ).toBeInTheDocument()
     })
   })
@@ -177,7 +177,7 @@ describe('<NowPlayingPanel />', () => {
 
     fireEvent.click(screen.getByRole('button'))
     await waitFor(() => {
-      expect(screen.getByText('u1 • nowPlaying.minutesAgo')).toBeInTheDocument()
+      expect(screen.getByText('u1 | nowPlaying.minutesAgo')).toBeInTheDocument()
     })
   })
 

@@ -419,7 +419,7 @@ func (s *taskQueueServiceImpl) processTask(queueName string, qs *queueState) boo
 	// This is done after dequeue so that empty polls don't consume rate tokens.
 	if qs.limiter != nil {
 		if err := qs.limiter.Wait(s.ctx); err != nil {
-			// Context cancelled during wait — revert task to pending for recovery
+			// Context cancelled during wait ÿ¢?revert task to pending for recovery
 			s.revertTaskToPending(taskID)
 			return false
 		}

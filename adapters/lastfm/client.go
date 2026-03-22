@@ -18,8 +18,7 @@ import (
 )
 
 const (
-	apiBaseUrl       = "https://ws.audioscrobbler.com/2.0/"
-	apiBaseUrlCustom = "http://127.0.0.1:22522/lastfm/"
+	apiBaseUrl = "https://ws.audioscrobbler.com/2.0/"
 )
 
 type lastFMError struct {
@@ -52,7 +51,7 @@ func (c *client) albumGetInfo(ctx context.Context, name string, artist string, m
 	params.Add("artist", artist)
 	params.Add("mbid", mbid)
 	params.Add("lang", lang)
-	response, err := c.makeRequestCustom(ctx, http.MethodGet, params, false)
+	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +63,7 @@ func (c *client) artistGetInfo(ctx context.Context, name string, lang string) (*
 	params.Add("method", "artist.getInfo")
 	params.Add("artist", name)
 	params.Add("lang", lang)
-	response, err := c.makeRequestCustom(ctx, http.MethodGet, params, false)
+	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +87,7 @@ func (c *client) artistGetTopTracks(ctx context.Context, name string, limit int)
 	params.Add("method", "artist.getTopTracks")
 	params.Add("artist", name)
 	params.Add("limit", strconv.Itoa(limit))
-	response, err := c.makeRequestCustom(ctx, http.MethodGet, params, false)
+	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
 	}
@@ -191,14 +190,6 @@ func (c *client) scrobble(ctx context.Context, sessionKey string, info ScrobbleI
 }
 
 func (c *client) makeRequest(ctx context.Context, method string, params url.Values, signed bool) (*Response, error) {
-	return c.makeRequestWithBaseUrl(ctx, method, params, signed, apiBaseUrl)
-}
-
-func (c *client) makeRequestCustom(ctx context.Context, method string, params url.Values, signed bool) (*Response, error) {
-	return c.makeRequestWithBaseUrl(ctx, method, params, signed, apiBaseUrlCustom)
-}
-
-func (c *client) makeRequestWithBaseUrl(ctx context.Context, method string, params url.Values, signed bool, baseUrl string) (*Response, error) {
 	params.Add("format", "json")
 	params.Add("api_key", c.apiKey)
 
@@ -209,10 +200,10 @@ func (c *client) makeRequestWithBaseUrl(ctx context.Context, method string, para
 	var req *http.Request
 	if method == http.MethodPost {
 		body := strings.NewReader(params.Encode())
-		req, _ = http.NewRequestWithContext(ctx, method, baseUrl, body)
+		req, _ = http.NewRequestWithContext(ctx, method, apiBaseUrl, body)
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	} else {
-		req, _ = http.NewRequestWithContext(ctx, method, baseUrl, nil)
+		req, _ = http.NewRequestWithContext(ctx, method, apiBaseUrl, nil)
 		req.URL.RawQuery = params.Encode()
 	}
 

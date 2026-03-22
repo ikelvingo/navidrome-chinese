@@ -276,7 +276,7 @@ var _ = Describe("Provider - ArtistImage", func() {
 		)
 
 		BeforeEach(func() {
-			// Test with en dash (–) in artist name like "Run–D.M.C."
+			// Test with en dash (�? in artist name like "Run–D.M.C."
 			artistWithEnDash = &model.Artist{ID: "artist-endash", Name: originalArtistName}
 			mockArtistRepo.Mock = mock.Mock{} // Reset default expectations
 			mockArtistRepo.On("Get", "artist-endash").Return(artistWithEnDash, nil).Once()
@@ -321,7 +321,7 @@ var _ = Describe("Provider - ArtistImage", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(imgURL).To(Equal(expectedURL))
 				mockArtistRepo.AssertCalled(GinkgoT(), "Get", "artist-endash")
-				// This assertion ensures the normalized name is used (en dash → hyphen)
+				// This assertion ensures the normalized name is used (en dash �?hyphen)
 				mockImageAgent.AssertCalled(GinkgoT(), "GetArtistImages", ctx, "artist-endash", normalizedArtistName, "")
 			})
 		})

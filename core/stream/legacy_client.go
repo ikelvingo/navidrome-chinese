@@ -11,7 +11,7 @@ import (
 
 // buildLegacyClientInfo translates legacy Subsonic stream/download parameters
 // into a ClientInfo for use with MakeDecision.
-// It does NOT read request.TranscodingFrom(ctx) — that is handled by
+// It does NOT read request.TranscodingFrom(ctx) �?that is handled by
 // MakeDecision's applyServerOverride.
 func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int) *ClientInfo {
 	ci := &ClientInfo{Name: "legacy"}
@@ -30,7 +30,7 @@ func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int
 		// format was requested (bitrate-only downsampling) or when the
 		// requested format matches the source. When the client explicitly
 		// requests a different format, direct play must not match the
-		// source — otherwise the source is returned untranscoded.
+		// source �?otherwise the source is returned untranscoded.
 		if reqFormat == "" || strings.EqualFold(reqFormat, mf.Suffix) {
 			ci.DirectPlayProfiles = []DirectPlayProfile{
 				{Containers: []string{mf.Suffix}, AudioCodecs: []string{mf.AudioCodec()}, Protocols: []string{ProtocolHTTP}},
@@ -44,7 +44,7 @@ func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int
 			ci.MaxTranscodingAudioBitrate = reqBitRate
 		}
 	} else {
-		// No transcoding requested — direct play everything
+		// No transcoding requested �?direct play everything
 		ci.DirectPlayProfiles = []DirectPlayProfile{
 			{Protocols: []string{ProtocolHTTP}},
 		}
@@ -86,7 +86,7 @@ func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile
 		return req
 	}
 
-	// No compatible profile for the requested format — retry with DefaultDownsamplingFormat
+	// No compatible profile for the requested format �?retry with DefaultDownsamplingFormat
 	// TODO: validate DefaultDownsamplingFormat at startup to warn about unsupported values
 	fallbackFormat := conf.Server.DefaultDownsamplingFormat
 	if reqFormat != "" && fallbackFormat != "" && !strings.EqualFold(reqFormat, fallbackFormat) {
@@ -95,7 +95,7 @@ func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile
 		return s.ResolveRequest(ctx, mf, fallbackFormat, reqBitRate, offset)
 	}
 
-	// Ultimate fallback — raw
+	// Ultimate fallback �?raw
 	req.Format = "raw"
 	return req
 }

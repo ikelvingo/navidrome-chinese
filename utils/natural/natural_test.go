@@ -69,7 +69,7 @@ var _ = Describe("Compare", func() {
 		Entry("a00b01 > a0b00", "a00b01", "a0b00", 1),
 		Entry("a00b00 == a0b00", "a00b00", "a0b00", 0),
 
-		// Leading zeros at end of string — lexical tie-break
+		// Leading zeros at end of string ïż?lexical tie-break
 		Entry("file01 < file1", "file01", "file1", -1),
 
 		// Prefix comparison

@@ -16,7 +16,7 @@ missing_deps=0
 # Check for Go
 if ! (command_exists go); then
   missing_deps=1
-  echo "âŒ Go (supported version between 1.20 - 1.24) is not installed."
+  echo "â?Go (supported version between 1.20 - 1.24) is not installed."
   echo ""
   echo "To install Go, visit the official download page:"
   echo "ðŸ‘‰ https://go.dev/dl/"
@@ -47,7 +47,7 @@ if (command_exists go); then
   done
 
   if [ $compat -eq 0 ]; then
-    echo "âŒ Supported Go version is not installed. Must be Go 1.20 - 1.24."
+    echo "â?Supported Go version is not installed. Must be Go 1.20 - 1.24."
     echo ""
   fi
 fi
@@ -57,7 +57,7 @@ ARCH=$(arch)
 # Check for TinyGo and its version
 if ! (command_exists tinygo); then
   missing_deps=1
-  echo "âŒ TinyGo is not installed."
+  echo "â?TinyGo is not installed."
   echo ""
   echo "To install TinyGo, visit the official download page:"
   echo "ðŸ‘‰ https://tinygo.org/getting-started/install/"
@@ -83,7 +83,7 @@ else
   tinygo_version=$(tinygo version | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | head -n1)
   if version_lt "$tinygo_version" "0.34.0"; then
     missing_deps=1
-    echo "âŒ TinyGo version must be >= 0.34.0 (current version: $tinygo_version)"
+    echo "â?TinyGo version must be >= 0.34.0 (current version: $tinygo_version)"
     echo "Please update TinyGo to a newer version."
     echo ""
   fi

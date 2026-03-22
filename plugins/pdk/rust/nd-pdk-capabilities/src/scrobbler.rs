@@ -89,7 +89,7 @@ pub struct TrackInfo {
     /// Album is the album name.
     #[serde(default)]
     pub album: String,
-    /// Artist is the formatted artist name for display (e.g., "Artist1 • Artist2").
+    /// Artist is the formatted artist name for display (e.g., "Artist1 / Artist2").
     #[serde(default)]
     pub artist: String,
     /// AlbumArtist is the formatted album artist name for display.

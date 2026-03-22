@@ -227,7 +227,7 @@ var _ = Describe("Search Endpoints", func() {
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				Expect(resp.SearchResult3).ToNot(BeNil())
 				Expect(resp.SearchResult3.Song).To(HaveLen(1))
-				Expect(resp.SearchResult3.Song[0].Title).To(Equal("プラチナ・ジェット"))
+				Expect(resp.SearchResult3.Song[0].Title).To(Equal("プラチナ・ジェッ�?))
 			})
 
 			It("finds artists by CJK name", func() {

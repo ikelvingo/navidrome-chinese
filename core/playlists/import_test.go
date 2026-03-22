@@ -774,7 +774,7 @@ var _ = Describe("Playlists - Import", func() {
 				"macOS DB with Apple Music playlist",
 				"artist/MichÃ¨le/song.mp3", norm.NFD, norm.NFC),
 
-			// Japanese Katakana: ãƒ‰ (U+30C9) decomposes to ãƒˆ (U+30C8) + combining dakuten (U+3099)
+			// Japanese Katakana: ï¿?(U+30C9) decomposes to ï¿?(U+30C8) + combining dakuten (U+3099)
 			Entry("Japanese Katakana with dakuten - DB:NFC, playlist:NFC (#4884)",
 				"Linux/Windows DB with NFC playlist",
 				"artist/\u30a2\u30a4\u30c9\u30eb/\u30c9\u30ea\u30fc\u30e0\u30bd\u30f3\u30b0.mp3", norm.NFC, norm.NFC),

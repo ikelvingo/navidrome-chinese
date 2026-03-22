@@ -84,12 +84,12 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/netease.search.artists.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			artists, err := client.searchArtists(context.Background(), "周杰伦", 5)
+			artists, err := client.searchArtists(context.Background(), "å¨æ°ï¿?, 5)
 			Expect(err).To(BeNil())
 			Expect(len(artists)).To(Equal(2))
-			Expect(artists[0].Name).To(Equal("周杰伦"))
+			Expect(artists[0].Name).To(Equal("å¨æ°ï¿?))
 			Expect(artists[0].ID).To(Equal(6452))
-			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("keywords=周杰伦"))
+			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("keywords=å¨æ°ï¿?))
 			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("type=100"))
 			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("limit=5"))
 		})
@@ -108,7 +108,7 @@ var _ = Describe("client", func() {
 				StatusCode: 200,
 			}
 
-			_, err := client.searchArtists(context.Background(), "周杰伦", 5)
+			_, err := client.searchArtists(context.Background(), "å¨æ°ï¿?, 5)
 			Expect(err).To(MatchError("netease: invalid response code: code 400"))
 		})
 
@@ -118,14 +118,14 @@ var _ = Describe("client", func() {
 				StatusCode: 500,
 			}
 
-			_, err := client.searchArtists(context.Background(), "周杰伦", 5)
+			_, err := client.searchArtists(context.Background(), "å¨æ°ï¿?, 5)
 			Expect(err).To(MatchError("netease: api error: http status 500"))
 		})
 
 		It("fails if HttpClient.Do() returns error", func() {
 			httpClient.Err = errors.New("network error")
 
-			_, err := client.searchArtists(context.Background(), "周杰伦", 5)
+			_, err := client.searchArtists(context.Background(), "å¨æ°ï¿?, 5)
 			Expect(err).To(MatchError("network error"))
 		})
 	})
@@ -135,13 +135,13 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/netease.search.songs.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			songs, err := client.searchSongs(context.Background(), "七里香", 5)
+			songs, err := client.searchSongs(context.Background(), "ä¸éï¿?, 5)
 			Expect(err).To(BeNil())
 			Expect(len(songs)).To(Equal(2))
-			Expect(songs[0].Name).To(Equal("七里香"))
+			Expect(songs[0].Name).To(Equal("ä¸éï¿?))
 			Expect(songs[0].ID).To(Equal(1859245776))
-			Expect(songs[0].Artists[0].Name).To(Equal("周杰伦"))
-			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("keywords=七里香"))
+			Expect(songs[0].Artists[0].Name).To(Equal("å¨æ°ï¿?))
+			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("keywords=ä¸éï¿?))
 			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("type=1"))
 		})
 
@@ -159,13 +159,13 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/netease.search.albums.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			albums, err := client.searchAlbums(context.Background(), "七里香", 5)
+			albums, err := client.searchAlbums(context.Background(), "ä¸éï¿?, 5)
 			Expect(err).To(BeNil())
 			Expect(len(albums)).To(Equal(2))
-			Expect(albums[0].Name).To(Equal("七里香"))
+			Expect(albums[0].Name).To(Equal("ä¸éï¿?))
 			Expect(albums[0].ID).To(Equal(16947))
-			Expect(albums[0].Artist.Name).To(Equal("周杰伦"))
-			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("keywords=七里香"))
+			Expect(albums[0].Artist.Name).To(Equal("å¨æ°ï¿?))
+			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("keywords=ä¸éï¿?))
 			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("type=10"))
 		})
 
@@ -186,7 +186,7 @@ var _ = Describe("client", func() {
 			desc, err := client.getArtistDesc(context.Background(), 6452)
 			Expect(err).To(BeNil())
 			Expect(desc.Code).To(Equal(200))
-			Expect(desc.BriefDesc).To(ContainSubstring("周杰伦"))
+			Expect(desc.BriefDesc).To(ContainSubstring("å¨æ°ï¿?))
 			Expect(len(desc.Introduction)).To(BeNumerically(">", 0))
 			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("id=6452"))
 		})
@@ -211,7 +211,7 @@ var _ = Describe("client", func() {
 			Expect(err).To(BeNil())
 			Expect(topSongs.Code).To(Equal(200))
 			Expect(len(topSongs.Songs)).To(BeNumerically(">", 0))
-			Expect(topSongs.Songs[0].Name).To(Equal("七里香"))
+			Expect(topSongs.Songs[0].Name).To(Equal("ä¸éï¿?))
 			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("id=6452"))
 		})
 	})
@@ -224,9 +224,9 @@ var _ = Describe("client", func() {
 			albumDetail, err := client.getAlbumDetail(context.Background(), 16947)
 			Expect(err).To(BeNil())
 			Expect(albumDetail.Code).To(Equal(200))
-			Expect(albumDetail.Album.Name).To(Equal("七里香"))
+			Expect(albumDetail.Album.Name).To(Equal("ä¸éï¿?))
 			Expect(albumDetail.Album.ID).To(Equal(16947))
-			Expect(albumDetail.Album.Artist.Name).To(Equal("周杰伦"))
+			Expect(albumDetail.Album.Artist.Name).To(Equal("å¨æ°ï¿?))
 			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("id=16947"))
 		})
 	})

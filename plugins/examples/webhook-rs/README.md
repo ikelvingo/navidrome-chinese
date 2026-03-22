@@ -37,7 +37,7 @@ Copy `webhook-rs.ndp` to your Navidrome plugins folder (configured via `Plugins.
 
 ## Configuration
 
-Configure in the Navidrome UI (Settings â†’ Plugins â†’ webhook-rs):
+Configure in the Navidrome UI (Settings â†?Plugins â†?webhook-rs):
 
 | Key    | Description                          | Example                                                   |
 |--------|--------------------------------------|-----------------------------------------------------------|

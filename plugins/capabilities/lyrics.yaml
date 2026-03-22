@@ -42,7 +42,7 @@ components:
         LyricsText:
             description: |-
                 LyricsText represents a single set of lyrics in raw text format.
-                Text can be plain text or LRC format — Navidrome will parse it.
+                Text can be plain text or LRC format �?Navidrome will parse it.
             properties:
                 lang:
                     type: string
@@ -64,7 +64,7 @@ components:
                     description: Album is the album name.
                 artist:
                     type: string
-                    description: Artist is the formatted artist name for display (e.g., "Artist1 • Artist2").
+                    description: Artist is the formatted artist name for display (e.g., "Artist1 / Artist2").
                 albumArtist:
                     type: string
                     description: AlbumArtist is the formatted album artist name for display.

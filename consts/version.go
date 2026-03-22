@@ -19,7 +19,7 @@ var (
 // master (9ed35cb)
 var Version = func() string {
 	if gitSha == "" {
-		return "dev"
+		return "cse"
 	}
 	gitTag = strings.TrimPrefix(gitTag, "v")
 	return fmt.Sprintf("%s (%s)", gitTag, gitSha)

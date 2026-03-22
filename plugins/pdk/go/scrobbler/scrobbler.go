@@ -70,7 +70,7 @@ type TrackInfo struct {
 	Title string `json:"title"`
 	// Album is the album name.
 	Album string `json:"album"`
-	// Artist is the formatted artist name for display (e.g., "Artist1 • Artist2").
+	// Artist is the formatted artist name for display (e.g., "Artist1 / Artist2").
 	Artist string `json:"artist"`
 	// AlbumArtist is the formatted album artist name for display.
 	AlbumArtist string `json:"albumArtist"`

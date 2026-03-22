@@ -51,7 +51,7 @@ func getUserLibraries(service core.Library) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		if err := json.NewEncoder(w).Encode(libraries); err != nil {
 			log.Error(r.Context(), "Error encoding user libraries response", err)
 		}
@@ -93,7 +93,7 @@ func setUserLibraries(service core.Library) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		if err := json.NewEncoder(w).Encode(libraries); err != nil {
 			log.Error(r.Context(), "Error encoding user libraries response", err)
 		}

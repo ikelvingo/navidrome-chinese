@@ -75,7 +75,7 @@ describe('ArtistLinkField', () => {
 
       render(<ArtistLinkField record={record} source="artist" />)
 
-      expect(intersperse).toHaveBeenCalledWith([], ' • ')
+      expect(intersperse).toHaveBeenCalledWith([], " • ")
     })
   })
 

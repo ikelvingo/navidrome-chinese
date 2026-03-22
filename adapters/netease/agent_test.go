@@ -72,11 +72,11 @@ var _ = Describe("neteaseAgent", func() {
 			f, _ := os.Open("tests/fixtures/netease.search.artists.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			url, err := agent.GetArtistURL(ctx, "123", "周杰伦", "")
+			url, err := agent.GetArtistURL(ctx, "123", "åšæ°ï¿?, "")
 			Expect(err).To(BeNil())
 			Expect(url).To(Equal("https://music.163.com/#/artist?id=6452"))
 			Expect(httpClient.RequestCount).To(Equal(1))
-			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("keywords=周杰伦"))
+			Expect(httpClient.SavedRequest.URL.String()).To(ContainSubstring("keywords=åšæ°ï¿?))
 		})
 
 		It("returns ErrNotFound when artist not found", func() {
@@ -89,7 +89,7 @@ var _ = Describe("neteaseAgent", func() {
 
 		It("returns error on API error", func() {
 			httpClient.Err = errors.New("network error")
-			_, err := agent.GetArtistURL(ctx, "123", "周杰伦", "")
+			_, err := agent.GetArtistURL(ctx, "123", "åšæ°ï¿?, "")
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -117,9 +117,9 @@ var _ = Describe("neteaseAgent", func() {
 				{Body: fDesc, StatusCode: 200},
 			}
 
-			bio, err := agent.GetArtistBiography(ctx, "123", "周杰伦", "")
+			bio, err := agent.GetArtistBiography(ctx, "123", "åšæ°ï¿?, "")
 			Expect(err).To(BeNil())
-			Expect(bio).To(ContainSubstring("周杰伦"))
+			Expect(bio).To(ContainSubstring("åšæ°ï¿?))
 			Expect(httpClient.RequestCount).To(Equal(2))
 		})
 
@@ -140,7 +140,7 @@ var _ = Describe("neteaseAgent", func() {
 				{Body: fEmptyDesc, StatusCode: 200},
 			}
 
-			_, err := agent.GetArtistBiography(ctx, "123", "周杰伦", "")
+			_, err := agent.GetArtistBiography(ctx, "123", "åšæ°ï¿?, "")
 			Expect(err).To(MatchError(agents.ErrNotFound))
 		})
 	})
@@ -152,7 +152,7 @@ var _ = Describe("neteaseAgent", func() {
 		})
 
 		It("returns ErrNotFound as NetEase doesn't support similar artists", func() {
-			similar, err := agent.GetSimilarArtists(ctx, "123", "周杰伦", "", 5)
+			similar, err := agent.GetSimilarArtists(ctx, "123", "åšæ°ï¿?, "", 5)
 			Expect(err).To(MatchError(agents.ErrNotFound))
 			Expect(similar).To(BeNil())
 		})
@@ -179,11 +179,11 @@ var _ = Describe("neteaseAgent", func() {
 				{Body: fTopSongs, StatusCode: 200},
 			}
 
-			songs, err := agent.GetArtistTopSongs(ctx, "123", "周杰伦", "", 3)
+			songs, err := agent.GetArtistTopSongs(ctx, "123", "åšæ°ï¿?, "", 3)
 			Expect(err).To(BeNil())
 			Expect(len(songs)).To(BeNumerically(">", 0))
-			Expect(songs[0].Name).To(Equal("七里香"))
-			Expect(songs[0].Artist).To(ContainSubstring("周杰伦"))
+			Expect(songs[0].Name).To(Equal("äžéï¿?))
+			Expect(songs[0].Artist).To(ContainSubstring("åšæ°ï¿?))
 			Expect(httpClient.RequestCount).To(Equal(2))
 		})
 
@@ -204,7 +204,7 @@ var _ = Describe("neteaseAgent", func() {
 				{Body: fEmptyTopSongs, StatusCode: 200},
 			}
 
-			_, err := agent.GetArtistTopSongs(ctx, "123", "周杰伦", "", 3)
+			_, err := agent.GetArtistTopSongs(ctx, "123", "åšæ°ï¿?, "", 3)
 			Expect(err).To(MatchError(agents.ErrNotFound))
 		})
 	})
@@ -216,7 +216,7 @@ var _ = Describe("neteaseAgent", func() {
 		})
 
 		It("returns ErrNotFound as NetEase doesn't support similar songs", func() {
-			similar, err := agent.GetSimilarSongsByTrack(ctx, "123", "七里香", "周杰伦", "", 5)
+			similar, err := agent.GetSimilarSongsByTrack(ctx, "123", "äžéï¿?, "åšæ°ï¿?, "", 5)
 			Expect(err).To(MatchError(agents.ErrNotFound))
 			Expect(similar).To(BeNil())
 		})
@@ -236,7 +236,7 @@ var _ = Describe("neteaseAgent", func() {
 			f, _ := os.Open("tests/fixtures/netease.search.artists.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			images, err := agent.GetArtistImages(ctx, "123", "周杰伦", "")
+			images, err := agent.GetArtistImages(ctx, "123", "åšæ°ï¿?, "")
 			Expect(err).To(BeNil())
 			Expect(len(images)).To(Equal(2))
 			Expect(images[0].URL).To(Equal("https://p1.music.126.net/BbR3TuhPULMLDV0MjczI4g==/109951165588539524.jpg"))
@@ -258,7 +258,7 @@ var _ = Describe("neteaseAgent", func() {
 			f, _ := os.Open("tests/fixtures/netease.search.artists.noimages.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			_, err := agent.GetArtistImages(ctx, "123", "周杰伦", "")
+			_, err := agent.GetArtistImages(ctx, "123", "åšæ°ï¿?, "")
 			Expect(err).To(MatchError(agents.ErrNotFound))
 		})
 	})
@@ -284,10 +284,10 @@ var _ = Describe("neteaseAgent", func() {
 				{Body: fDetail, StatusCode: 200},
 			}
 
-			albumInfo, err := agent.GetAlbumInfo(ctx, "七里香", "周杰伦", "")
+			albumInfo, err := agent.GetAlbumInfo(ctx, "äžéï¿?, "åšæ°ï¿?, "")
 			Expect(err).To(BeNil())
-			Expect(albumInfo.Name).To(Equal("七里香"))
-			Expect(albumInfo.Description).To(ContainSubstring("七里香"))
+			Expect(albumInfo.Name).To(Equal("äžéï¿?))
+			Expect(albumInfo.Description).To(ContainSubstring("äžéï¿?))
 			Expect(albumInfo.URL).To(Equal("https://music.163.com/#/album?id=16947"))
 			Expect(httpClient.RequestCount).To(Equal(2))
 		})
@@ -315,7 +315,7 @@ var _ = Describe("neteaseAgent", func() {
 			f, _ := os.Open("tests/fixtures/netease.search.albums.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			images, err := agent.GetAlbumImages(ctx, "七里香", "周杰伦", "")
+			images, err := agent.GetAlbumImages(ctx, "äžéï¿?, "åšæ°ï¿?, "")
 			Expect(err).To(BeNil())
 			Expect(len(images)).To(Equal(2))
 			Expect(images[0].URL).To(Equal("https://p1.music.126.net/BbR3TuhPULMLDV0MjczI4g==/109951165588539524.jpg"))
@@ -341,7 +341,7 @@ var _ = Describe("neteaseAgent", func() {
 		})
 
 		It("returns ErrNotFound as NetEase doesn't have MBID", func() {
-			mbid, err := agent.GetArtistMBID(ctx, "123", "周杰伦")
+			mbid, err := agent.GetArtistMBID(ctx, "123", "åšæ°ï¿?)
 			Expect(err).To(MatchError(agents.ErrNotFound))
 			Expect(mbid).To(Equal(""))
 		})

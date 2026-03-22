@@ -86,7 +86,7 @@ func getQueue(ds model.DataStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_, _ = w.Write(resp) //nolint:gosec
 	}
 }

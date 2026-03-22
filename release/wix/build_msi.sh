@@ -4,17 +4,12 @@ FFMPEG_VERSION="7.1"
 FFMPEG_REPOSITORY=navidrome/ffmpeg-windows-builds
 DOWNLOAD_FOLDER=/tmp
 
-#Exit if GIT_TAG is not set
-if [ -z "$GIT_TAG" ]; then
-  echo "GIT_TAG is not set, exiting..."
-  exit 1
-fi
-
 set -e
 
 WORKSPACE=$1
 ARCH=$2
-NAVIDROME_BUILD_VERSION=$(echo "$GIT_TAG" | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/')
+# Use version cse
+NAVIDROME_BUILD_VERSION="cse"
 
 echo "Building MSI package for $ARCH, version $NAVIDROME_BUILD_VERSION"
 

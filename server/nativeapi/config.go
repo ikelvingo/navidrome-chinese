@@ -122,7 +122,7 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 		Config:     configMap,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		log.Error(ctx, "Error encoding config response", err)
 	}

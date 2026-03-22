@@ -88,11 +88,11 @@ var _ = DescribeTable("containsCJK",
 	Entry("returns false for empty string", "", false),
 	Entry("returns false for ASCII text", "hello world", false),
 	Entry("returns false for Latin with diacritics", "Björk début", false),
-	Entry("detects Chinese characters (Han)", "周杰伦", true),
-	Entry("detects Japanese Hiragana", "こんにちは", true),
+	Entry("detects Chinese characters (Han)", "周杰�?, true),
+	Entry("detects Japanese Hiragana", "こんにち�?, true),
 	Entry("detects Japanese Katakana", "カタカナ", true),
-	Entry("detects Korean Hangul", "한국어", true),
-	Entry("detects CJK mixed with Latin", "best of 周杰伦", true),
+	Entry("detects Korean Hangul", "한국�?, true),
+	Entry("detects CJK mixed with Latin", "best of 周杰�?, true),
 	Entry("detects single CJK character", "a曲b", true),
 )
 
@@ -370,7 +370,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 			results, err := mr.Search("プラチナ", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(1))
-			Expect(results[0].Title).To(Equal("プラチナ・ジェット"))
+			Expect(results[0].Title).To(Equal("プラチナ・ジェッ�?))
 			Expect(results[0].ID).To(Equal(songCJK.ID))
 		})
 

@@ -26,7 +26,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 	}
 	var mfs model.MediaFiles
 	// Chunk size of 100 lines, as each line can generate up to 4 lookup candidates
-	// (NFC/NFD × raw/lowercase), and SQLite has a max expression tree depth of 1000.
+	// (NFC/NFD û raw/lowercase), and SQLite has a max expression tree depth of 1000.
 	for lines := range slice.CollectChunks(slice.LinesFrom(reader), 100) {
 		filteredLines := make([]string, 0, len(lines))
 		for _, line := range lines {
@@ -65,7 +65,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 		//
 		// We also include the original (non-lowercased) paths because SQLite's COLLATE NOCASE
 		// only handles ASCII case-insensitivity. Non-ASCII characters like fullwidth letters
-		// (e.g., ＡＢＣＤ vs ａｂｃｄ) are not matched case-insensitively by NOCASE.
+		// (e.g., ÿ¥Àÿ¥Âÿ¥Èÿ¥Ê vs ÿ§ÿ§ÿ§ÿ§) are not matched case-insensitively by NOCASE.
 		lookupCandidates := make([]string, 0, len(resolvedPaths)*4)
 		seen := make(map[string]struct{}, len(resolvedPaths)*4)
 		for _, path := range resolvedPaths {
@@ -283,7 +283,7 @@ func resolveImageURL(value string, folder *model.Folder, matcher *libraryMatcher
 		return ""
 	}
 
-	// HTTP(S) URLs — store as-is, but only if external album art is enabled
+	// HTTP(S) URLs ÿ¢?store as-is, but only if external album art is enabled
 	if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
 		if !conf.Server.EnableM3UExternalAlbumArt {
 			return ""

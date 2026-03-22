@@ -279,7 +279,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 			})
 
 			It("denies direct play when codec mismatches", func() {
-				// MKA container with opus codec â€” client only supports mp3
+				// MKA container with opus codec ï¿?client only supports mp3
 				resp := doPostReq("getTranscodeDecision", mp3OnlyClient, "mediaId", mkaOpusTrackID, "mediaType", "song")
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				Expect(resp.TranscodeDecision).ToNot(BeNil())
@@ -328,7 +328,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				Expect(resp.TranscodeDecision.TranscodeStream.Codec).To(Equal("flac"))
 				// DSD sample rate normalized: 2822400 / 8 = 352800
 				Expect(resp.TranscodeDecision.TranscodeStream.AudioSamplerate).To(Equal(int32(352800)))
-				// DSD 1-bit â†’ 24-bit PCM
+				// DSD 1-bit ï¿?24-bit PCM
 				Expect(resp.TranscodeDecision.TranscodeStream.AudioBitdepth).To(Equal(int32(24)))
 			})
 
@@ -337,7 +337,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				resp := doPostReq("getTranscodeDecision", flacOnlyClient, "mediaId", mp3TrackID, "mediaType", "song")
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				Expect(resp.TranscodeDecision).ToNot(BeNil())
-				// MP3 is lossy, FLAC is lossless â€” should not allow transcoding
+				// MP3 is lossy, FLAC is lossless ï¿?should not allow transcoding
 				Expect(resp.TranscodeDecision.CanTranscode).To(BeFalse())
 				Expect(resp.TranscodeDecision.CanDirectPlay).To(BeFalse())
 				Expect(resp.TranscodeDecision.TranscodeParams).To(BeEmpty())
@@ -349,7 +349,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				Expect(resp.TranscodeDecision).ToNot(BeNil())
 				Expect(resp.TranscodeDecision.CanTranscode).To(BeTrue())
 				Expect(resp.TranscodeDecision.TranscodeStream).ToNot(BeNil())
-				// maxTranscodingAudioBitrate is 192000 bps = 192 kbps â†’ response in bps
+				// maxTranscodingAudioBitrate is 192000 bps = 192 kbps ï¿?response in bps
 				Expect(resp.TranscodeDecision.TranscodeStream.AudioBitrate).To(Equal(int32(192000)))
 			})
 		})
@@ -375,7 +375,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				src := resp.TranscodeDecision.SourceStream
 				Expect(src).ToNot(BeNil())
-				// MP3 is 320 kbps â†’ 320000 bps
+				// MP3 is 320 kbps ï¿?320000 bps
 				Expect(src.AudioBitrate).To(Equal(int32(320000)))
 			})
 		})
@@ -399,7 +399,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 			It("does not affect direct play when source bitrate is under player MaxBitRate", func() {
 				setPlayerMaxBitRate(500) // 500 kbps cap
 
-				// MP3 is 320kbps, under the 500kbps player cap â†’ direct play
+				// MP3 is 320kbps, under the 500kbps player cap ï¿?direct play
 				resp := doPostReq("getTranscodeDecision", mp3OnlyClient, "mediaId", mp3TrackID, "mediaType", "song")
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				Expect(resp.TranscodeDecision).ToNot(BeNil())
@@ -410,13 +410,13 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				setPlayerMaxBitRate(500) // 500 kbps player cap
 
 				// Client caps at 320kbps (bitrateCapClient), which is more restrictive than 500
-				// FLAC is 900kbps â†’ exceeds both limits â†’ transcode
+				// FLAC is 900kbps ï¿?exceeds both limits ï¿?transcode
 				resp := doPostReq("getTranscodeDecision", bitrateCapClient, "mediaId", flacTrackID, "mediaType", "song")
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				Expect(resp.TranscodeDecision).ToNot(BeNil())
 				Expect(resp.TranscodeDecision.CanTranscode).To(BeTrue())
 				Expect(resp.TranscodeDecision.TranscodeStream).ToNot(BeNil())
-				// Client limit (320kbps) is more restrictive â†’ 320000 bps
+				// Client limit (320kbps) is more restrictive ï¿?320000 bps
 				Expect(resp.TranscodeDecision.TranscodeStream.AudioBitrate).To(Equal(int32(320000)))
 			})
 
@@ -424,20 +424,20 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				setPlayerMaxBitRate(192) // 192 kbps player cap
 
 				// Client caps at 320kbps (bitrateCapClient), player is more restrictive at 192
-				// FLAC is 900kbps â†’ transcode at 192kbps
+				// FLAC is 900kbps ï¿?transcode at 192kbps
 				resp := doPostReq("getTranscodeDecision", bitrateCapClient, "mediaId", flacTrackID, "mediaType", "song")
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				Expect(resp.TranscodeDecision).ToNot(BeNil())
 				Expect(resp.TranscodeDecision.CanTranscode).To(BeTrue())
 				Expect(resp.TranscodeDecision.TranscodeStream).ToNot(BeNil())
-				// Player limit (192kbps) is more restrictive â†’ 192000 bps
+				// Player limit (192kbps) is more restrictive ï¿?192000 bps
 				Expect(resp.TranscodeDecision.TranscodeStream.AudioBitrate).To(Equal(int32(192000)))
 			})
 
 			It("has no effect when player MaxBitRate is 0", func() {
 				setPlayerMaxBitRate(0) // No player cap
 
-				// FLAC with flac+mp3 client â†’ direct play (no bitrate constraint)
+				// FLAC with flac+mp3 client ï¿?direct play (no bitrate constraint)
 				resp := doPostReq("getTranscodeDecision", flacAndMp3Client, "mediaId", flacTrackID, "mediaType", "song")
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				Expect(resp.TranscodeDecision).ToNot(BeNil())
@@ -448,7 +448,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 		Describe("format-aware default bitrate", func() {
 			It("uses mp3 format default (192kbps) for lossless-to-mp3 with no bitrate limits", func() {
 				// mp3OnlyClient has no maxAudioBitrate or maxTranscodingAudioBitrate
-				// FLAC â†’ MP3 should use the mp3 default bitrate (192kbps), not hardcoded 256
+				// FLAC ï¿?MP3 should use the mp3 default bitrate (192kbps), not hardcoded 256
 				resp := doPostReq("getTranscodeDecision", mp3OnlyClient, "mediaId", flacTrackID, "mediaType", "song")
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				Expect(resp.TranscodeDecision).ToNot(BeNil())
@@ -461,7 +461,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 
 			It("uses opus format default (128kbps) for lossless-to-opus with no bitrate limits", func() {
 				// opusTranscodeClient has no maxAudioBitrate or maxTranscodingAudioBitrate
-				// FLAC â†’ Opus should use the opus default bitrate (128kbps)
+				// FLAC ï¿?Opus should use the opus default bitrate (128kbps)
 				resp := doPostReq("getTranscodeDecision", opusTranscodeClient, "mediaId", flacTrackID, "mediaType", "song")
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				Expect(resp.TranscodeDecision).ToNot(BeNil())
@@ -474,7 +474,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 
 			It("uses maxAudioBitrate as fallback for lossless-to-lossy when no maxTranscodingAudioBitrate", func() {
 				// bitrateCapClient has maxAudioBitrate=320000 but no maxTranscodingAudioBitrate
-				// FLAC â†’ MP3: maxAudioBitrate (320kbps) should be used as the target
+				// FLAC ï¿?MP3: maxAudioBitrate (320kbps) should be used as the target
 				resp := doPostReq("getTranscodeDecision", bitrateCapClient, "mediaId", flacTrackID, "mediaType", "song")
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				Expect(resp.TranscodeDecision).ToNot(BeNil())
@@ -486,7 +486,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 
 			It("prefers maxTranscodingAudioBitrate over maxAudioBitrate for lossless-to-lossy", func() {
 				// maxTranscodeBitrateClient has maxTranscodingAudioBitrate=192000
-				// FLAC â†’ MP3: should use 192kbps, not format default or maxAudioBitrate
+				// FLAC ï¿?MP3: should use 192kbps, not format default or maxAudioBitrate
 				resp := doPostReq("getTranscodeDecision", maxTranscodeBitrateClient, "mediaId", flacTrackID, "mediaType", "song")
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				Expect(resp.TranscodeDecision).ToNot(BeNil())
@@ -503,7 +503,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 
 				// opusTranscodeClient has no client bitrate limits
 				// Player cap injects maxAudioBitrate=320
-				// FLAC (900kbps) â†’ exceeds 320 â†’ transcode to opus
+				// FLAC (900kbps) ï¿?exceeds 320 ï¿?transcode to opus
 				// Losslessâ†’lossy: maxTranscodingAudioBitrate=0, so falls back to maxAudioBitrate=320
 				resp := doPostReq("getTranscodeDecision", opusTranscodeClient, "mediaId", flacTrackID, "mediaType", "song")
 				Expect(resp.Status).To(Equal(responses.StatusOK))
@@ -511,7 +511,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				Expect(resp.TranscodeDecision.CanTranscode).To(BeTrue())
 				Expect(resp.TranscodeDecision.TranscodeStream).ToNot(BeNil())
 				Expect(resp.TranscodeDecision.TranscodeStream.Codec).To(Equal("opus"))
-				// maxAudioBitrate=320 used as fallback â†’ 320000 bps
+				// maxAudioBitrate=320 used as fallback ï¿?320000 bps
 				Expect(resp.TranscodeDecision.TranscodeStream.AudioBitrate).To(Equal(int32(320000)))
 			})
 
@@ -520,21 +520,21 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 
 				// maxTranscodeBitrateClient: maxTranscodingAudioBitrate=192000 (192kbps), no maxAudioBitrate
 				// Player cap injects maxAudioBitrate=320
-				// FLAC (900kbps) â†’ exceeds 320 â†’ transcode to mp3
+				// FLAC (900kbps) ï¿?exceeds 320 ï¿?transcode to mp3
 				// Losslessâ†’lossy: maxTranscodingAudioBitrate=192 takes priority
 				resp := doPostReq("getTranscodeDecision", maxTranscodeBitrateClient, "mediaId", flacTrackID, "mediaType", "song")
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				Expect(resp.TranscodeDecision).ToNot(BeNil())
 				Expect(resp.TranscodeDecision.CanTranscode).To(BeTrue())
 				Expect(resp.TranscodeDecision.TranscodeStream).ToNot(BeNil())
-				// maxTranscodingAudioBitrate=192 is preferred â†’ 192000 bps
+				// maxTranscodingAudioBitrate=192 is preferred ï¿?192000 bps
 				Expect(resp.TranscodeDecision.TranscodeStream.AudioBitrate).To(Equal(int32(192000)))
 			})
 
 			It("streams with correct bitrate after player MaxBitRate-triggered transcode", func() {
 				setPlayerMaxBitRate(128)
 
-				// Get decision: FLAC (900kbps) with player cap 128 â†’ transcode
+				// Get decision: FLAC (900kbps) with player cap 128 ï¿?transcode
 				resp := doPostReq("getTranscodeDecision", mp3OnlyClient, "mediaId", flacTrackID, "mediaType", "song")
 				Expect(resp.Status).To(Equal(responses.StatusOK))
 				Expect(resp.TranscodeDecision.CanTranscode).To(BeTrue())

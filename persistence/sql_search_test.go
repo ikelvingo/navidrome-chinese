@@ -56,7 +56,7 @@ var _ = Describe("sqlRepository", func() {
 			conf.Server.Search.Backend = "fts"
 			conf.Server.Search.FullString = false
 
-			strategy := getSearchStrategy("media_file", "周杰伦")
+			strategy := getSearchStrategy("media_file", "åšæ°ï¿?)
 			Expect(strategy).ToNot(BeNil())
 			sql, _, err := strategy.ToSql()
 			Expect(err).ToNot(HaveOccurred())
@@ -100,7 +100,7 @@ var _ = Describe("sqlRepository", func() {
 			conf.Server.Search.Backend = "legacy"
 			conf.Server.Search.FullString = false
 
-			strategy := getSearchStrategy("media_file", "周杰伦")
+			strategy := getSearchStrategy("media_file", "åšæ°ï¿?)
 			Expect(strategy).ToNot(BeNil())
 			sql, _, err := strategy.ToSql()
 			Expect(err).ToNot(HaveOccurred())

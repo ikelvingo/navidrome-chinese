@@ -37,6 +37,7 @@ export default defineConfig({
   build: {
     outDir: 'build',
     sourcemap: true,
+    charset: 'utf8',
   },
   test: {
     globals: true,
@@ -50,6 +51,9 @@ export default defineConfig({
       include: ['src/**/*'],
       exclude: [],
     },
+  },
+  esbuild: {
+    charset: 'utf8',
   },
 })
 

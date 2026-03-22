@@ -120,11 +120,11 @@ zip -j my-plugin.ndp manifest.json dist/plugin.wasm
 ```
 
 Available schemas in [../schemas/](../schemas/):
-- `metadata_agent.yaml` â€“ Artist/album metadata
-- `scrobbler.yaml` â€“ Scrobbling integration
-- `lifecycle.yaml` â€“ Init callbacks
-- `scheduler_callback.yaml` â€“ Scheduled tasks
-- `websocket_callback.yaml` â€“ WebSocket events
+- `metadata_agent.yaml` â€?Artist/album metadata
+- `scrobbler.yaml` â€?Scrobbling integration
+- `lifecycle.yaml` â€?Init callbacks
+- `scheduler_callback.yaml` â€?Scheduled tasks
+- `websocket_callback.yaml` â€?WebSocket events
 
 ### Option 3: Different Language
 
@@ -152,11 +152,11 @@ Real-world metadata agent. Shows:
 ### Discord Rich Presence (Go)
 
 Complex multi-capability plugin. Shows:
-- **Scrobbler** â€“ Receives play events
-- **WebSocket** â€“ Maintains Discord gateway connection
-- **Scheduler** â€“ Heartbeat and timeout management
-- **Cache** â€“ Connection state storage
-- **Artwork** â€“ Getting album art URLs
+- **Scrobbler** â€?Receives play events
+- **WebSocket** â€?Maintains Discord gateway connection
+- **Scheduler** â€?Heartbeat and timeout management
+- **Cache** â€?Connection state storage
+- **Artwork** â€?Getting album art URLs
 
 ### Cover Art Archive (Python)
 

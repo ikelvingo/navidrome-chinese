@@ -118,7 +118,7 @@ var (
 	songDisc1Track01 = mf(model.MediaFile{ID: "2002", Title: "Disc 1 Track 1", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 1, TrackNumber: 1, Path: p("/test/multi/disc1/track1.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
 	songDisc2Track01 = mf(model.MediaFile{ID: "2003", Title: "Disc 2 Track 1", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 2, TrackNumber: 1, Path: p("/test/multi/disc2/track1.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
 	songDisc1Track02 = mf(model.MediaFile{ID: "2004", Title: "Disc 1 Track 2", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 1, TrackNumber: 2, Path: p("/test/multi/disc1/track2.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
-	songCJK          = mf(model.MediaFile{ID: "3001", Title: "プラチナ・ジェット", ArtistID: "4", Artist: "シートベルツ", AlbumID: "105", Album: "COWBOY BEBOP", Path: p("/seatbelts/cowboy-bebop/track1.mp3")})
+	songCJK          = mf(model.MediaFile{ID: "3001", Title: "プラチナ・ジェッ�?, ArtistID: "4", Artist: "シートベルツ", AlbumID: "105", Album: "COWBOY BEBOP", Path: p("/seatbelts/cowboy-bebop/track1.mp3")})
 	songVersioned    = mf(model.MediaFile{ID: "3002", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "106", Album: "Abbey Road", Path: p("/beatles/2/come together.mp3")})
 	songPunctuation  = mf(model.MediaFile{ID: "3003", Title: "!!!!!!!", ArtistID: "5", Artist: "The Roots", AlbumID: "107", Album: "Things Fall Apart", Path: p("/roots/things/track1.mp3")})
 	testSongs        = model.MediaFiles{

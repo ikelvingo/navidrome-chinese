@@ -513,7 +513,7 @@ var _ = Describe("ffmpeg", func() {
 		})
 
 		It("prefers stream-level bit_rate over format-level when both are present", func() {
-			// ALAC/DSD: stream has bit_rate, format also has bit_rate — stream wins
+			// ALAC/DSD: stream has bit_rate, format also has bit_rate ï¿?stream wins
 			data := []byte(`{"streams":[` +
 				`{"index":0,"codec_name":"alac","codec_type":"audio","sample_fmt":"s16p",` +
 				`"sample_rate":"44100","channels":2,"bits_per_sample":0,` +

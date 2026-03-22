@@ -6,18 +6,10 @@ GO_BUILD_TAGS=netgo,sqlite_fts5
 export CGO_CFLAGS_ALLOW=--define-prefix
 export ND_ENABLEINSIGHTSCOLLECTOR=false
 
-ifneq ("$(wildcard .git/HEAD)","")
-GIT_SHA=$(shell git rev-parse --short HEAD)
-GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)-SNAPSHOT
-else
-GIT_SHA=source_archive
-GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))-SNAPSHOT
-endif
-
 SUPPORTED_PLATFORMS ?= linux/amd64,linux/arm64,linux/arm/v5,linux/arm/v6,linux/arm/v7,linux/386,linux/riscv64,darwin/amd64,darwin/arm64,windows/amd64,windows/386
 IMAGE_PLATFORMS ?= $(shell echo $(SUPPORTED_PLATFORMS) | tr ',' '\n' | grep "linux" | grep -v "arm/v5" | tr '\n' ',' | sed 's/,$$//')
 PLATFORMS ?= $(SUPPORTED_PLATFORMS)
-DOCKER_TAG ?= deluan/navidrome:develop
+DOCKER_TAG ?= ikelvingo/navidrome-chinese
 
 # Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
 CROSS_TAGLIB_VERSION ?= 2.2.1-1
@@ -145,14 +137,14 @@ setup-git: ##@Development Setup Git hooks (pre-commit and pre-push)
 .PHONY: setup-git
 
 build: check_go_env buildjs ##@Build Build the project
-	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=$(GO_BUILD_TAGS)
+	go build -tags=$(GO_BUILD_TAGS)
 .PHONY: build
 
 buildall: deprecated build
 .PHONY: buildall
 
 debug-build: check_go_env buildjs ##@Build Build the project (with remote debug on)
-	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=$(GO_BUILD_TAGS)
+	go build -gcflags="all=-N -l" -tags=$(GO_BUILD_TAGS)
 .PHONY: debug-build
 
 buildjs: check_node_env ui/build/index.html ##@Build Build only frontend
@@ -175,20 +167,16 @@ docker-platforms: ##@Cross_Compilation List supported platforms
 docker-build: ##@Cross_Compilation Cross-compile for any supported platform (check `make docker-platforms`)
 	docker buildx build \
 		--platform $(PLATFORMS) \
-		--build-arg GIT_TAG=${GIT_TAG} \
-		--build-arg GIT_SHA=${GIT_SHA} \
 		--build-arg CROSS_TAGLIB_VERSION=${CROSS_TAGLIB_VERSION} \
 		--output "./binaries" --target binary .
 .PHONY: docker-build
 
-docker-image: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidrome:develop`, override with DOCKER_TAG var. Use IMAGE_PLATFORMS to specify target platforms
+docker-image: ##@Cross_Compilation Build Docker image, tagged as `ikelvingo/navidrome-chinese`, override with DOCKER_TAG var. Use IMAGE_PLATFORMS to specify target platforms
 	@echo $(IMAGE_PLATFORMS) | grep -q "windows" && echo "ERROR: Windows is not supported for Docker builds" && exit 1 || true
 	@echo $(IMAGE_PLATFORMS) | grep -q "darwin" && echo "ERROR: macOS is not supported for Docker builds" && exit 1 || true
 	@echo $(IMAGE_PLATFORMS) | grep -q "arm/v5" && echo "ERROR: Linux ARMv5 is not supported for Docker builds" && exit 1 || true
 	docker buildx build \
 		--platform $(IMAGE_PLATFORMS) \
-		--build-arg GIT_TAG=${GIT_TAG} \
-		--build-arg GIT_SHA=${GIT_SHA} \
 		--build-arg CROSS_TAGLIB_VERSION=${CROSS_TAGLIB_VERSION} \
 		--tag $(DOCKER_TAG) .
 .PHONY: docker-image
@@ -197,7 +185,7 @@ docker-msi: ##@Cross_Compilation Build MSI installer for Windows
 	make docker-build PLATFORMS=windows/386,windows/amd64
 	DOCKER_CLI_HINTS=false docker build -q -t navidrome-msi-builder -f release/wix/msitools.dockerfile .
 	@rm -rf binaries/msi
-	docker run -it --rm -v $(PWD):/workspace -v $(PWD)/binaries:/workspace/binaries -e GIT_TAG=${GIT_TAG} \
+	docker run -it --rm -v $(PWD):/workspace -v $(PWD)/binaries:/workspace/binaries \
 		navidrome-msi-builder sh -c "release/wix/build_msi.sh /workspace 386 && release/wix/build_msi.sh /workspace amd64"
 	@du -h binaries/msi/*.msi
 .PHONY: docker-msi
@@ -234,64 +222,32 @@ get-music: ##@Development Download some free music from Navidrome's demo instanc
 
 
 ##########################################
-#### Miscellaneous
+#### Worktrees
 
-clean:
-	@rm -rf ./binaries ./dist ./ui/build/*
-	@touch ./ui/build/.gitkeep
-.PHONY: clean
+WORKTREES_DIR := .worktrees
 
-release:
-	@if [[ ! "${V}" =~ ^[0-9]+\.[0-9]+\.[0-9]+.*$$ ]]; then echo "Usage: make release V=X.X.X"; exit 1; fi
-	go mod tidy
-	@if [ -n "`git status -s`" ]; then echo "\n\nThere are pending changes. Please commit or stash first"; exit 1; fi
-	make pre-push
-	git tag v${V}
-	git push origin v${V} --no-verify
-.PHONY: release
+wt: check_go_env ##@Worktrees Create and setup a git worktree. Usage: make wt name=feature-name [go=1]
+	@if [ -z "${name}" ]; then echo "Usage: make wt name=<branch-name> [go=1]"; exit 1; fi
+	@mkdir -p $(WORKTREES_DIR)
+	@echo "Creating worktree for branch '${name}'..."
+	@git worktree add $(WORKTREES_DIR)/${name} -b ${name} 2>/dev/null || \
+		git worktree add $(WORKTREES_DIR)/${name} ${name}
+	@if [ -n "${go}" ]; then \
+		./scripts/setup-worktree.sh $(WORKTREES_DIR)/${name} --go-only; \
+	else \
+		./scripts/setup-worktree.sh $(WORKTREES_DIR)/${name}; \
+	fi
+	@echo "\nWorktree ready at $(WORKTREES_DIR)/${name}"
+	@echo "  cd $(WORKTREES_DIR)/${name}"
+.PHONY: wt
 
-download-deps:
-	@echo Downloading Go dependencies...
-	@go mod download
-	@go mod tidy # To revert any changes made by the `go mod download` command
-.PHONY: download-deps
+rm-wt: ##@Worktrees Remove a git worktree. Usage: make rm-wt name=feature-name
+	@if [ -z "${name}" ]; then echo "Usage: make rm-wt name=<branch-name>"; exit 1; fi
+	@if [ ! -d "$(WORKTREES_DIR)/${name}" ]; then echo "Worktree '${name}' not found in $(WORKTREES_DIR)/"; exit 1; fi
+	@echo "Removing worktree '${name}'..."
+	@git worktree remove --force $(WORKTREES_DIR)/${name}
+	@echo "Worktree '${name}' removed."
+	@echo "Note: branch '${name}' still exists. Delete it with: git branch -D ${name}"
+.PHONY: rm-wt
 
-check_env: check_go_env check_node_env
-.PHONY: check_env
-
-check_go_env:
-	@(hash go) || (echo "\nERROR: GO environment not setup properly!\n"; exit 1)
-	@current_go_version=`go version | cut -d ' ' -f 3 | cut -c3-` && \
-		echo "$(GO_VERSION) $$current_go_version" | \
-		tr ' ' '\n' | sort -V | tail -1 | \
-		grep -q "^$${current_go_version}$$" || \
-		(echo "\nERROR: Please upgrade your GO version\nThis project requires at least the version $(GO_VERSION)"; exit 1)
-.PHONY: check_go_env
-
-check_node_env:
-	@(hash node) || (echo "\nERROR: Node environment not setup properly!\n"; exit 1)
-	@current_node_version=`node --version` && \
-		echo "$(NODE_VERSION) $$current_node_version" | \
-		tr ' ' '\n' | sort -V | tail -1 | \
-		grep -q "^$${current_node_version}$$" || \
-		(echo "\nERROR: Please check your Node version. Should be at least $(NODE_VERSION)\n"; exit 1)
-.PHONY: check_node_env
-
-pre-push: lintall testall
-.PHONY: pre-push
-
-deprecated:
-	@echo "WARNING: This target is deprecated and will be removed in future releases. Use 'make build' instead."
-.PHONY: deprecated
-
-.DEFAULT_GOAL := help
-
-HELP_FUN = \
-	%help; while(<>){push@{$$help{$$2//'options'}},[$$1,$$3] \
-	if/^([\w-_]+)\s*:.*\#\#(?:@(\w+))?\s(.*)$$/}; \
-	print"$$_:\n", map"  $$_->[0]".(" "x(20-length($$_->[0])))."$$_->[1]\n",\
-	@{$$help{$$_}},"\n" for sort keys %help; \
-
-help: ##@Miscellaneous Show this help
-	@echo "Usage: make [target] ...\n"
-	@perl -e '$(HELP_FUN)' $(MAKEFILE_LIST)
+ls

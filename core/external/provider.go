@@ -378,7 +378,7 @@ func (e *provider) ArtistImage(ctx context.Context, id string) (*url.URL, error)
 	// If the info is expired, the background refresh (via UpdateArtistInfo/artistQueue) will update it.
 	imageUrl := artist.ArtistImageUrl()
 	if imageUrl == "" {
-		// No cached URL — must fetch from external source synchronously
+		// No cached URL ∩┐?must fetch from external source synchronously
 		e.callGetImage(ctx, e.ag, &artist)
 		if utils.IsCtxDone(ctx) {
 			log.Warn(ctx, "ArtistImage call canceled", ctx.Err())
@@ -563,7 +563,7 @@ func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artis
 
 	count := 0
 
-	// Process the similar artists using priority: ID → MBID → Name
+	// Process the similar artists using priority: ID ∩┐?MBID ∩┐?Name
 	for _, s := range similar {
 		if count >= limit {
 			break

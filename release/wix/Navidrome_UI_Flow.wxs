@@ -1,4 +1,4 @@
-﻿<Fragment>
+<Fragment>
     <UI Id="Navidrome_UI_Flow">
         <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
         <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
