@@ -1,8 +1,9 @@
 ## Scrobbling from netease. 
 
-## You should use it with [navichina](https://github.com/TooAndy/navichina) Thanks for TooAndy's great work.
+## You should use it with [navichina](https://github.com/TooAndy/navichina) Thanks for [TooAndy](https://github.com/TooAndy)'s great work.
 
 # #1139840: Remove navichina dependency in navidrome-chinese. 
+**You can get it by 'docker pull ikelvingo/navidrome-chinese:cse' or 'docker pull ikelvingo/navidrome-chinese:latest'.**
 Input new 'netease' agent for scrobbling artists, albums, similar songs, 
 and artist popular songs. 
 - Note1: Similar artists functionality not supported.
