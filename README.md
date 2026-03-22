@@ -4,6 +4,7 @@
 
 # #1139840: Remove navichina dependency in navidrome-chinese. 
 **You can get it by 'docker pull ikelvingo/navidrome-chinese:cse' or 'docker pull ikelvingo/navidrome-chinese:latest'.**
+The first version is based on offical navidrome v0.60.3
 Input new 'netease' agent for scrobbling artists, albums, similar songs, 
 and artist popular songs. 
 - Note1: Similar artists functionality not supported.
@@ -28,7 +29,7 @@ music collection from any browser or mobile device. It's like your personal Spot
 
 
 **Note**: The `master` branch may be in an unstable or even broken state during development. 
-Please use [releases](https://github.com/navidrome/navidrome/releases) instead of 
+Please use [releases](https://github.com/navidrome/navidrome/releases) instead of \\
 the `master` branch in order to get a stable set of binaries.
 
 ## [Check out our Live Demo!](https://www.navidrome.org/demo/)
