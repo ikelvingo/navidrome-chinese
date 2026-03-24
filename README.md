@@ -1,4 +1,4 @@
-##  Navidrome [China Special Edition] 
+# Navidrome [China Special Edition] 
 
 ## Provide scrobbling artists and albums bio from netease.
 
