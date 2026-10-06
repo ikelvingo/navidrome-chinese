@@ -15,6 +15,9 @@
 #   --load              build and load into the local image store (default)
 #   --no-cache          pass --no-cache to docker buildx (full rebuild)
 #   --no-latest         do not also tag/push :latest
+#   --provenance        keep buildx provenance attestation (default: disabled,
+#                       so the tag is a plain single manifest, matching the
+#                       historical 0.63.2 image and maximizing compatibility)
 #   --platform <p>      build for a specific platform list, e.g. linux/amd64
 #                       (multi-platform requires --push; cannot be combined with --load)
 #   -h, --help          show this help
@@ -32,6 +35,7 @@ MODE="--load"
 NO_CACHE=""
 ADD_LATEST=1
 PLATFORM=""
+PROVENANCE=(--provenance=false)
 VERSION=""
 
 usage() { sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; }
@@ -42,6 +46,7 @@ while [ $# -gt 0 ]; do
     --load)      MODE="--load"; shift ;;
     --no-cache)  NO_CACHE="--no-cache"; shift ;;
     --no-latest) ADD_LATEST=0; shift ;;
+    --provenance) PROVENANCE=(); shift ;;
     --platform)  PLATFORM="${2:?--platform requires a value}"; shift 2 ;;
     -h|--help)   usage; exit 0 ;;
     -*)          echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
@@ -87,6 +92,7 @@ echo
 docker buildx build \
   ${NO_CACHE} \
   ${PLATFORM_ARG[@]+"${PLATFORM_ARG[@]}"} \
+  ${PROVENANCE[@]+"${PROVENANCE[@]}"} \
   --build-arg GIT_TAG="${GIT_TAG}" \
   --build-arg GIT_SHA="${GIT_SHA}" \
   "${TAGS[@]}" \
