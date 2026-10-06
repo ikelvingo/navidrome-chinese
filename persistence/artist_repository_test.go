@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -108,6 +109,52 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(roleFilter("", 123)).To(Equal(expectedInvalid))
 				Expect(roleFilter("", nil)).To(Equal(expectedInvalid))
 				Expect(roleFilter("", []string{"artist"})).To(Equal(expectedInvalid))
+			})
+		})
+
+		Describe("sanitizeArtistStatsRole", func() {
+			It("allowlists total and registered roles", func() {
+				role, ok := sanitizeArtistStatsRole("total")
+				Expect(ok).To(BeTrue())
+				Expect(role).To(Equal("total"))
+				role, ok = sanitizeArtistStatsRole("albumartist")
+				Expect(ok).To(BeTrue())
+				Expect(role).To(Equal("albumartist"))
+			})
+
+			It("rejects SQL injection payloads used in sort mappings", func() {
+				payload := "total'||(SELECT password FROM user LIMIT 1)||'"
+				role, ok := sanitizeArtistStatsRole(payload)
+				Expect(ok).To(BeFalse())
+				Expect(role).To(BeEmpty())
+			})
+		})
+
+		Describe("ReadAll role sort SQL injection", func() {
+			It("does not interpolate attacker-controlled role into ORDER BY", func() {
+				ctx := request.WithUser(GinkgoT().Context(), adminUser)
+				repo := NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
+				payload := "total') OR 1=1--"
+				_, err := repo.ReadAll(rest.QueryOptions{
+					Sort:    "songCount",
+					Order:   "ASC",
+					Filters: map[string]any{"role": payload},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(repo.sortMappings["song_count"]).To(Equal("sum(stats->>'total'->>'m')"))
+				Expect(repo.sortMappings["song_count"]).ToNot(ContainSubstring(payload))
+			})
+
+			It("keeps valid role sort paths", func() {
+				ctx := request.WithUser(GinkgoT().Context(), adminUser)
+				repo := NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
+				_, err := repo.ReadAll(rest.QueryOptions{
+					Sort:    "songCount",
+					Order:   "DESC",
+					Filters: map[string]any{"role": "composer"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(repo.sortMappings["song_count"]).To(Equal("sum(stats->>'composer'->>'m')"))
 			})
 		})
 
@@ -266,6 +313,33 @@ var _ = Describe("ArtistRepository", func() {
 			ctx := GinkgoT().Context()
 			ctx = request.WithUser(ctx, adminUser)
 			repo = NewArtistRepository(ctx, GetDBXBuilder())
+		})
+
+		Describe("GetCursor", func() {
+			It("yields the same artists as GetAll", func() {
+				opts := model.QueryOptions{Sort: "name"}
+				want, err := repo.GetAll(opts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.Artist(want)))
+			})
+
+			It("honors Max/Offset like GetAll", func() {
+				opts := model.QueryOptions{Sort: "name", Max: 2, Offset: 1}
+				want, err := repo.GetAll(opts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.Artist(want)))
+			})
+		})
+
+		Describe("getAllIDs", func() {
+			It("returns the same id set as GetAll", func() {
+				want, err := repo.GetAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(want).ToNot(BeEmpty())
+				ids, err := repo.(*artistRepository).getAllIDs()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ids).To(ConsistOf(slice.Map(want, func(a model.Artist) string { return a.ID })))
+			})
 		})
 
 		Describe("Basic Operations", func() {

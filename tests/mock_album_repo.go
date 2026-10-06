@@ -2,6 +2,7 @@ package tests
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -20,6 +21,8 @@ type MockAlbumRepo struct {
 	All                     model.Albums
 	Err                     bool
 	Options                 model.QueryOptions
+	optionsMu               sync.Mutex
+	SearchQuery             string            // last query passed to Search
 	ReassignAnnotationCalls map[string]string // prevID -> newID
 	CopyAttributesCalls     map[string]string // fromID -> toID
 }
@@ -61,18 +64,38 @@ func (m *MockAlbumRepo) Put(al *model.Album) error {
 	if al.ID == "" {
 		al.ID = id.NewRandom()
 	}
+	if m.Data == nil {
+		m.Data = make(map[string]*model.Album)
+	}
 	m.Data[al.ID] = al
 	return nil
 }
 
 func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	if len(qo) > 0 {
+		// Recording the last options is a read-path write, and callers resolve concurrently.
+		m.optionsMu.Lock()
 		m.Options = qo[0]
+		m.optionsMu.Unlock()
 	}
 	if m.Err {
 		return nil, errors.New("unexpected error")
 	}
 	return m.All, nil
+}
+
+func (m *MockAlbumRepo) GetCursor(qo ...model.QueryOptions) (model.AlbumCursor, error) {
+	res, err := m.GetAll(qo...)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(model.Album, error) bool) {
+		for _, a := range res {
+			if !yield(a, nil) {
+				return
+			}
+		}
+	}, nil
 }
 
 func (m *MockAlbumRepo) IncPlayCount(id string, timestamp time.Time) error {
@@ -113,13 +136,11 @@ func (m *MockAlbumRepo) GetTouchedAlbums(libID int) (model.AlbumCursor, error) {
 }
 
 func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
-	if m.Err {
-		return errors.New("unexpected error")
-	}
-	return nil
+	return m.Put(album)
 }
 
 func (m *MockAlbumRepo) Search(q string, options ...model.QueryOptions) (model.Albums, error) {
+	m.SearchQuery = q
 	if len(options) > 0 {
 		m.Options = options[0]
 	}
@@ -174,6 +195,9 @@ func (m *MockAlbumRepo) SetRating(rating int, itemID string) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}
+	if d, ok := m.Data[itemID]; ok {
+		d.Rating = rating
+	}
 	return nil
 }
 
@@ -182,7 +206,19 @@ func (m *MockAlbumRepo) SetStar(starred bool, itemIDs ...string) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}
+	for _, id := range itemIDs {
+		if d, ok := m.Data[id]; ok {
+			d.Starred = starred
+		}
+	}
 	return nil
+}
+
+func (m *MockAlbumRepo) GetYears(libraryIDs ...int) ([]int, error) {
+	if m.Err {
+		return nil, errors.New("error")
+	}
+	return []int{}, nil
 }
 
 var _ model.AlbumRepository = (*MockAlbumRepo)(nil)

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -84,10 +86,14 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))
 	g.Go(startPlaybackServer(ctx))
+	g.Go(startJellyfinDiscovery(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
-	g.Go(scheduleDBOptimizer(ctx))
+	g.Go(scheduleDBAnalyzer(ctx))
 	g.Go(startPluginManager(ctx))
+	artworkWorker := CreateArtworkWorker()
+	g.Go(startArtworkWorker(ctx, artworkWorker))
+	g.Go(scheduleArtworkHousekeeping(ctx, artworkWorker))
 	g.Go(runInitialScan(ctx))
 	if conf.Server.Scanner.Enabled {
 		g.Go(startScanWatcher(ctx))
@@ -124,6 +130,9 @@ func startServer(ctx context.Context) func() error {
 		if conf.Server.ListenBrainz.Enabled {
 			a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
 		}
+		if conf.Server.Jellyfin.Enabled {
+			a.MountRouter("Jellyfin API", consts.URLPathJellyfinAPI, CreateJellyfinAPIRouter(ctx))
+		}
 		if conf.Server.Prometheus.Enabled {
 			p := CreatePrometheus()
 			// blocking call because takes <100ms but useful if fails
@@ -131,13 +140,21 @@ func startServer(ctx context.Context) func() error {
 			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, p.GetHandler())
 		}
 		if conf.Server.DevEnableProfiler {
-			a.MountRouter("Profiling", "/debug", middleware.Profiler())
+			a.MountRouter("Profiling", "/debug", profilerHandler())
 		}
 		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
 			a.MountRouter("Background images", conf.Server.UILoginBackgroundURL, backgrounds.NewHandler())
 		}
 		return a.Run(ctx, conf.Server.Address, conf.Server.Port, conf.Server.TLSCert, conf.Server.TLSKey)
 	}
+}
+
+// profilerHandler returns the pprof handler. net/http/pprof resolves the profile
+// name from the raw request path, so the BasePath has to come off first.
+func profilerHandler() http.Handler {
+	// A trailing or root slash would make StripPrefix drop the leading slash chi needs.
+	basePath := strings.TrimRight(conf.Server.BasePath, "/")
+	return http.StripPrefix(basePath, middleware.Profiler())
 }
 
 // schedulePeriodicScan schedules a periodic scan of the music library, if configured.
@@ -275,16 +292,24 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 	}
 }
 
-func scheduleDBOptimizer(ctx context.Context) func() error {
+func scheduleDBAnalyzer(ctx context.Context) func() error {
 	return func() error {
-		log.Info(ctx, "Scheduling DB optimizer", "schedule", consts.OptimizeDBSchedule)
+		if !conf.Server.EnableScheduledDBAnalyze {
+			log.Info(ctx, "Scheduled DB analysis is DISABLED")
+			return nil
+		}
+		log.Info(ctx, "Scheduling DB analysis check", "schedule", consts.DBAnalyzeCheckSchedule)
 		schedulerInstance := scheduler.GetInstance()
-		_, err := schedulerInstance.Add(consts.OptimizeDBSchedule, func() {
-			if scanner.IsScanning() {
-				log.Debug(ctx, "Skipping DB optimization because a scan is in progress")
+		_, err := schedulerInstance.Add(consts.DBAnalyzeCheckSchedule, func() {
+			release, ok := scanner.LockForMaintenance()
+			if !ok {
+				log.Debug(ctx, "Skipping DB analysis check because a scan is in progress")
 				return
 			}
-			db.Optimize(ctx)
+			defer release()
+			if _, err := db.OptimizeIfNeeded(ctx); err != nil {
+				log.Error(ctx, "Error analyzing DB", err)
+			}
 		})
 		return err
 	}
@@ -319,6 +344,18 @@ func startInsightsCollector(ctx context.Context) func() error {
 	}
 }
 
+// startJellyfinDiscovery never returns an error: a discovery failure must not stop the server.
+func startJellyfinDiscovery(ctx context.Context) func() error {
+	return func() error {
+		if !conf.Server.Jellyfin.Enabled || !conf.Server.Jellyfin.AutoDiscovery {
+			log.Debug("Jellyfin auto-discovery is DISABLED")
+			return nil
+		}
+		CreateJellyfinDiscovery().Serve(ctx)
+		return nil
+	}
+}
+
 // startPlaybackServer starts the Navidrome playback server, if configured.
 // It is responsible for the Jukebox functionality
 func startPlaybackServer(ctx context.Context) func() error {
@@ -330,6 +367,60 @@ func startPlaybackServer(ctx context.Context) func() error {
 		log.Info(ctx, "Starting Jukebox service")
 		playbackInstance := GetPlaybackServer()
 		return playbackInstance.Run(ctx)
+	}
+}
+
+// startArtworkWorker starts the background artwork acquisition worker. It always
+// runs; the queue is simply empty until something enqueues work into it.
+func startArtworkWorker(ctx context.Context, worker *artwork.Worker) func() error {
+	return func() error {
+		log.Info(ctx, "Starting artwork worker")
+		// The scanner writes to the DB for its whole run; competing for the write lock makes both fail.
+		worker.PauseWhile(scanner.IsScanning)
+		return worker.Run(ctx)
+	}
+}
+
+// outsideScan runs a DB maintenance job unless a scan is running, and keeps a scan from starting
+// until it ends; both write to the DB, and competing for the lock can make either fail.
+func outsideScan(ctx context.Context, job string, run func(context.Context) error) {
+	release, ok := scanner.LockForMaintenance()
+	if !ok {
+		log.Debug(ctx, "Skipping "+job+" because a scan is in progress")
+		return
+	}
+	defer release()
+	if err := run(ctx); err != nil {
+		log.Error(ctx, "Error running "+job, err)
+	}
+}
+
+// scheduleArtworkHousekeeping registers the recurring missing-state and prune jobs, and
+// reports an artwork config change without acting on it.
+func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) func() error {
+	return func() error {
+		schedulerInstance := scheduler.GetInstance()
+
+		if _, err := schedulerInstance.Add(consts.ArtworkEnqueueMissingSchedule, func() {
+			outsideScan(ctx, "artwork missing-state recheck", worker.EnqueueMissingAll)
+		}); err != nil {
+			log.Error(ctx, "Error scheduling artwork missing-state recheck", err)
+		}
+
+		if _, err := schedulerInstance.Add(consts.ArtworkPruneSchedule, func() {
+			outsideScan(ctx, "artwork prune", worker.RunPrune)
+		}); err != nil {
+			log.Error(ctx, "Error scheduling artwork prune", err)
+		}
+
+		// Also run the missing-row recheck once at startup so a never-scanned entity is picked up
+		// immediately, not only on the next hourly tick (e.g. after enabling the feature).
+		outsideScan(ctx, "artwork missing-state recheck", worker.EnqueueMissingAll)
+
+		if err := worker.ReconcileConfig(ctx); err != nil {
+			log.Error(ctx, "Error checking the artwork config fingerprint", err)
+		}
+		return nil
 	}
 }
 
@@ -383,7 +474,7 @@ func init() {
 	rootCmd.Flags().String("albumplaycountmode", viper.GetString("albumplaycountmode"), "how to compute playcount for albums. absolute (default) or normalized")
 	rootCmd.Flags().Bool("autoimportplaylists", viper.GetBool("autoimportplaylists"), "enable/disable .m3u playlist auto-import`")
 
-	rootCmd.Flags().Bool("prometheus.enabled", viper.GetBool("prometheus.enabled"), "enable/disable prometheus metrics endpoint`")
+	rootCmd.Flags().Bool("prometheus.enabled", viper.GetBool("prometheus.enabled"), "enable/disable prometheus metrics endpoint")
 	rootCmd.Flags().String("prometheus.metricspath", viper.GetString("prometheus.metricspath"), "http endpoint for prometheus metrics")
 
 	_ = viper.BindPFlag("address", rootCmd.Flags().Lookup("address"))

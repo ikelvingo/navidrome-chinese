@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	_ "github.com/mattn/go-sqlite3"
@@ -157,8 +158,37 @@ var (
 	testUsers   = model.Users{adminUser, regularUser, thirdUser}
 )
 
+var (
+	firstScrobble  = model.Scrobble{ID: 1, MediaFileID: "1001", UserID: "userid", SubmissionTime: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	secondScrobble = model.Scrobble{ID: 2, MediaFileID: "1003", UserID: "2222", SubmissionTime: time.Date(1970, 2, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	thirdScrobble  = model.Scrobble{ID: 3, MediaFileID: "1002", UserID: "userid", SubmissionTime: time.Date(1970, 3, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	scrobbles      = model.Scrobbles{firstScrobble, secondScrobble, thirdScrobble}
+)
+
 func p(path string) string {
 	return filepath.FromSlash(path)
+}
+
+// restrictedFixture creates a second library plus a non-admin user granted library 1 only, so
+// specs can assert that a query filters by library. Cleans itself up after the spec.
+func restrictedFixture(name string) (context.Context, model.Library, model.User) {
+	adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+	db := GetDBXBuilder()
+
+	lib := model.Library{Name: name + " Library", Path: "/" + name}
+	lr := NewLibraryRepository(adminCtx, db)
+	Expect(lr.Put(&lib)).To(Succeed())
+
+	user := createUserWithLibraries(name+"-restricted", []int{1})
+	ur := NewUserRepository(adminCtx, db)
+	Expect(ur.Put(&user)).To(Succeed())
+	Expect(ur.SetUserLibraries(user.ID, []int{1})).To(Succeed())
+
+	DeferCleanup(func() {
+		_ = NewUserRepository(adminCtx, db).Delete(user.ID)
+		_ = NewLibraryRepository(adminCtx, db).(*libraryRepository).delete(squirrel.Eq{"id": lib.ID})
+	})
+	return adminCtx, lib, user
 }
 
 var _ = BeforeSuite(func() {
@@ -304,8 +334,33 @@ var _ = BeforeSuite(func() {
 	songComeTogether.Starred = true
 	songComeTogether.StarredAt = mf.StarredAt
 	testSongs[1] = songComeTogether
+
+	scrobbleRepo := NewScrobbleRepository(ctx, conn).(*scrobbleRepository)
+	for _, s := range scrobbles {
+		_, err := scrobbleRepo.executeSQL(squirrel.Insert("scrobbles").SetMap(map[string]any{
+			"media_file_id":   s.MediaFileID,
+			"user_id":         s.UserID,
+			"submission_time": s.SubmissionTime,
+		}))
+		if err != nil {
+			panic(err)
+		}
+	}
 })
 
 func GetDBXBuilder() *dbx.DB {
 	return dbx.NewFromDB(db.Db(), db.Dialect)
+}
+
+// collectCursor takes the cursor's underlying func type so the named cursor types
+// (model.AlbumCursor, ...) infer T.
+func collectCursor[T any](cursor func(func(T, error) bool), err error) []T {
+	GinkgoHelper()
+	Expect(err).ToNot(HaveOccurred())
+	var out []T
+	for item, err := range cursor {
+		Expect(err).ToNot(HaveOccurred())
+		out = append(out, item)
+	}
+	return out
 }

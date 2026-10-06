@@ -4,11 +4,12 @@ import (
 	"context"
 	"path/filepath"
 	"testing/fstest"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -64,8 +65,8 @@ var _ = Describe("ScanFolders", Ordered, func() {
 		}
 		Expect(ds.User(ctx).Put(&adminUser)).To(Succeed())
 
-		s = scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-			playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
+		s = scanner.New(ctx, ds, events.NoopBroker(),
+			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
 		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
@@ -80,7 +81,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 			rock := template(_t{"albumartist": "Rock Artist", "album": "Rock Album"})
 			jazz := template(_t{"albumartist": "Jazz Artist", "album": "Jazz Album"})
 			pop := template(_t{"albumartist": "Pop Artist", "album": "Pop Album"})
-			createFS(fstest.MapFS{
+			fsys = createFS(fstest.MapFS{
 				"rock/track1.mp3":        rock(track(1, "Rock Track 1")),
 				"rock/track2.mp3":        rock(track(2, "Rock Track 2")),
 				"rock/subdir/track3.mp3": rock(track(3, "Rock Track 3")),
@@ -122,6 +123,38 @@ var _ = Describe("ScanFolders", Ordered, func() {
 
 			// Verify files in the pop folder were NOT scanned
 			Expect(paths).ToNot(ContainElement("pop/track6.mp3"))
+			Expect(ds.Property(ctx).Get(consts.DBAnalyzePendingKey)).To(Equal("1"))
+		})
+	})
+
+	Describe("Planner statistics maintenance", func() {
+		It("does not mark routine quick-scan changes for immediate analysis", func() {
+			rock := template(_t{"albumartist": "Rock Artist", "album": "Rock Album"})
+			fsys = createFS(fstest.MapFS{
+				"rock/track1.mp3": rock(track(1, "Rock Track 1")),
+			})
+			_, err := s.ScanAll(ctx, true)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ds.Property(ctx).Get(consts.DBAnalyzePendingKey)).To(Equal("0"))
+
+			fsys.Add("rock/track2.mp3", rock(track(2, "Rock Track 2")), time.Now().Add(time.Second))
+			_, err = s.ScanAll(ctx, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ds.Property(ctx).Get(consts.DBAnalyzePendingKey)).To(Equal("0"))
+		})
+
+		It("does not treat an interrupted scan in an untargeted library as a full scan", func() {
+			otherLib := model.Library{ID: 2, Name: "Other Library", Path: "fake:///other"}
+			Expect(ds.Library(ctx).Put(&otherLib)).To(Succeed())
+			Expect(ds.Library(ctx).ScanBegin(lib.ID, true)).To(Succeed())
+
+			lastAnalyze := "2026-07-09T12:00:00Z"
+			Expect(ds.Property(ctx).Put(consts.LastDBAnalyzeAtKey, lastAnalyze)).To(Succeed())
+			Expect(ds.Property(ctx).Put(consts.DBAnalyzePendingKey, "0")).To(Succeed())
+
+			_, err := s.ScanFolders(ctx, false, []model.ScanTarget{{LibraryID: otherLib.ID, FolderPath: "."}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ds.Property(ctx).Get(consts.LastDBAnalyzeAtKey)).To(Equal(lastAnalyze))
 		})
 	})
 

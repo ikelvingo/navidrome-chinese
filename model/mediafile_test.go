@@ -218,11 +218,11 @@ var _ = Describe("MediaFiles", func() {
 							{Tags: Tags{"genre": []string{"Alternative", "Rock"}}},
 						}
 					})
-					It("sets the correct Genre, sorted by frequency, then alphabetically", func() {
+					It("sets the correct Genre, sorted by frequency, then by order of appearance", func() {
 						album := mfs.ToAlbum()
 						Expect(album.Tags).To(HaveLen(2))
-						Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Rock", "Alternative", "Punk"}))
-						Expect(album.Tags).To(HaveKeyWithValue(TagMood, []string{"Chill", "Happy"}))
+						Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Rock", "Punk", "Alternative"}))
+						Expect(album.Tags).To(HaveKeyWithValue(TagMood, []string{"Happy", "Chill"}))
 					})
 				})
 				When("we have tags with mismatching case", func() {
@@ -266,6 +266,35 @@ var _ = Describe("MediaFiles", func() {
 						album := mfs.ToAlbum()
 						Expect(album.Comment).To(BeEmpty())
 					})
+				})
+			})
+			Context("ReplayGain", func() {
+				It("picks the most frequent non-nil album gain and peak", func() {
+					mfs := MediaFiles{
+						{Path: "a", RGAlbumGain: new(-8.0), RGAlbumPeak: new(0.9)},
+						{Path: "b", RGAlbumGain: new(-8.0), RGAlbumPeak: new(0.9)},
+						{Path: "c", RGAlbumGain: new(-5.0), RGAlbumPeak: new(1.0)},
+					}
+					album := mfs.ToAlbum()
+					Expect(album.RGAlbumGain).ToNot(BeNil())
+					Expect(*album.RGAlbumGain).To(Equal(-8.0))
+					Expect(album.RGAlbumPeak).ToNot(BeNil())
+					Expect(*album.RGAlbumPeak).To(Equal(0.9))
+				})
+				It("keeps a genuine 0.0 gain instead of dropping it", func() {
+					mfs := MediaFiles{
+						{Path: "a", RGAlbumGain: new(0.0)},
+						{Path: "b", RGAlbumGain: new(0.0)},
+					}
+					album := mfs.ToAlbum()
+					Expect(album.RGAlbumGain).ToNot(BeNil())
+					Expect(*album.RGAlbumGain).To(Equal(0.0))
+				})
+				It("leaves gain and peak nil when no track has a value", func() {
+					mfs := MediaFiles{{Path: "a"}, {Path: "b"}}
+					album := mfs.ToAlbum()
+					Expect(album.RGAlbumGain).To(BeNil())
+					Expect(album.RGAlbumPeak).To(BeNil())
 				})
 			})
 			Context("Participants", func() {
@@ -504,6 +533,13 @@ var _ = Describe("MediaFile", func() {
 		Entry("returns just title when disabled", false, Tags{TagSubtitle: []string{"Live"}}, "Song"),
 		Entry("returns just title when tag is absent", true, Tags{}, "Song"),
 		Entry("returns just title when tag is an empty slice", true, Tags{TagSubtitle: []string{}}, "Song"),
+		Entry("does not double parentheses when subtitle is already parenthesized", true, Tags{TagSubtitle: []string{"(non-explicit version)"}}, "Song (non-explicit version)"),
+		Entry("does not add parentheses when subtitle is wrapped in square brackets", true, Tags{TagSubtitle: []string{"[Live]"}}, "Song [Live]"),
+		Entry("does not add parentheses when subtitle is wrapped in curly braces", true, Tags{TagSubtitle: []string{"{Remix}"}}, "Song {Remix}"),
+		Entry("does not add parentheses when subtitle is wrapped in angle brackets", true, Tags{TagSubtitle: []string{"<Live>"}}, "Song <Live>"),
+		Entry("adds parentheses when brackets do not match", true, Tags{TagSubtitle: []string{"[Live)"}}, "Song ([Live))"),
+		Entry("trims surrounding whitespace before wrapping", true, Tags{TagSubtitle: []string{"  Live  "}}, "Song (Live)"),
+		Entry("trims whitespace around an already-bracketed subtitle", true, Tags{TagSubtitle: []string{" (Live) "}}, "Song (Live)"),
 	)
 	DescribeTable("FullAlbumName",
 		func(enabled bool, tags Tags, expected string) {
@@ -515,6 +551,8 @@ var _ = Describe("MediaFile", func() {
 		Entry("returns just album name when disabled", false, Tags{TagAlbumVersion: []string{"Deluxe Edition"}}, "Album"),
 		Entry("returns just album name when tag is absent", true, Tags{}, "Album"),
 		Entry("returns just album name when tag is an empty slice", true, Tags{TagAlbumVersion: []string{}}, "Album"),
+		Entry("does not double parentheses when version is already parenthesized", true, Tags{TagAlbumVersion: []string{"(Deluxe Edition)"}}, "Album (Deluxe Edition)"),
+		Entry("does not add parentheses when version is wrapped in square brackets", true, Tags{TagAlbumVersion: []string{"[Deluxe Edition]"}}, "Album [Deluxe Edition]"),
 	)
 	Describe("CoverArtId", func() {
 		It("returns its own id if it HasCoverArt", func() {
@@ -604,6 +642,15 @@ var _ = Describe("MediaFile", func() {
 
 })
 
+var _ = DescribeTable("MediaFile.HasEmbeddedLyrics",
+	func(lyrics string, expected bool) {
+		Expect(MediaFile{Lyrics: lyrics}.HasEmbeddedLyrics()).To(Equal(expected))
+	},
+	Entry("empty string (never-scanned zero value)", "", false),
+	Entry(`the post-scan "[]" no-lyrics sentinel`, "[]", false),
+	Entry("a stored lyric list", `[{"lang":"eng","line":[{"value":"la"}]}]`, true),
+)
+
 var _ = Describe("MediaFile.Works", func() {
 	It("returns nil when there are no work tags", func() {
 		mf := MediaFile{}
@@ -668,14 +715,10 @@ var _ = Describe("MediaFile.Movements", func() {
 })
 
 var _ = Describe("MediaFile.Hash", func() {
-	// Guards the upgrade guarantee: converting BPM/BitDepth from int to *int must not change hashes,
-	// or every file would be spuriously re-imported on the next scan.
-	// Golden hashes were captured at 46221d516 when those fields were plain ints.
-	It("keeps hashes identical to the pre-pointer-conversion values", func() {
-		// Golden hashes computed at 46221d516, when BPM/BitDepth were plain ints — pinning
-		// them guarantees the pointer conversion cannot trigger a full-library re-import.
-		Expect(MediaFile{Title: "Song"}.Hash()).To(Equal("1d856ced42cb96db39e354a4bac9a622"))
-		Expect(MediaFile{Title: "Song", BPM: new(120), BitDepth: new(16)}.Hash()).To(Equal("b2b0b1d1dd7fd767093588e4af3a0689"))
+	// Pins the hash formula: an accidental change spuriously re-imports every file on the next scan.
+	It("hashes to a stable value", func() {
+		Expect(MediaFile{Title: "Song"}.Hash()).To(Equal("05fdf70bb0cbe090"))
+		Expect(MediaFile{Title: "Song", BPM: new(120), BitDepth: new(16)}.Hash()).To(Equal("b5daf6ac1009a538"))
 	})
 	It("changes the hash when a pointer field has a value", func() {
 		base := MediaFile{Title: "Song"}

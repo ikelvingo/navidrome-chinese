@@ -23,6 +23,7 @@ type TranscodeDecider interface {
 	CreateTranscodeParams(decision *TranscodeDecision) (string, error)
 	ResolveRequestFromToken(ctx context.Context, token string, mf *model.MediaFile, offset int) (Request, error)
 	ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) Request
+	ResolveClientRequest(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, offset int) Request
 }
 
 func NewTranscodeDecider(ds model.DataStore, ff ffmpeg.FFmpeg) TranscodeDecider {
@@ -269,7 +270,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 		Codec:      strings.ToLower(profile.AudioCodec),
 		SampleRate: normalizeSourceSampleRate(src.SampleRate, src.Codec),
 		Channels:   src.Channels,
-		BitDepth:   normalizeSourceBitDepth(src.BitDepth, src.Codec),
+		BitDepth:   targetBitDepth(src.BitDepth, src.Codec, targetIsLossless),
 		IsLossless: targetIsLossless,
 	}
 	if ts.Codec == "" {

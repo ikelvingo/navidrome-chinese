@@ -45,19 +45,14 @@ func (j *ConfigDefinition) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// Experimental features that may change or be removed in future versions
-type Experimental struct {
-	// Threads corresponds to the JSON schema field "threads".
-	Threads *ThreadsFeature `json:"threads,omitempty" yaml:"threads,omitempty" mapstructure:"threads,omitempty"`
-}
-
 // HTTP access permissions for a plugin
 type HTTPPermission struct {
 	// Explanation for why HTTP access is needed
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 
 	// List of required host patterns for HTTP requests (e.g., 'api.example.com',
-	// '*.musicbrainz.org')
+	// '*.musicbrainz.org'). A named host alone can't reach a private address; also
+	// list an IP, a CIDR (e.g., '10.0.0.0/8') or '*' for that
 	RequiredHosts []string `json:"requiredHosts,omitempty" yaml:"requiredHosts,omitempty" mapstructure:"requiredHosts,omitempty"`
 }
 
@@ -108,9 +103,6 @@ type Manifest struct {
 
 	// A brief description of what the plugin does
 	Description *string `json:"description,omitempty" yaml:"description,omitempty" mapstructure:"description,omitempty"`
-
-	// Experimental corresponds to the JSON schema field "experimental".
-	Experimental *Experimental `json:"experimental,omitempty" yaml:"experimental,omitempty" mapstructure:"experimental,omitempty"`
 
 	// The display name of the plugin
 	Name string `json:"name" yaml:"name" mapstructure:"name"`
@@ -187,6 +179,12 @@ type Permissions struct {
 	// Scheduler corresponds to the JSON schema field "scheduler".
 	Scheduler *SchedulerPermission `json:"scheduler,omitempty" yaml:"scheduler,omitempty" mapstructure:"scheduler,omitempty"`
 
+	// ScrobbleRetriever corresponds to the JSON schema field "scrobbleRetriever".
+	ScrobbleRetriever *ScrobbleRetrieverPermission `json:"scrobbleRetriever,omitempty" yaml:"scrobbleRetriever,omitempty" mapstructure:"scrobbleRetriever,omitempty"`
+
+	// Storage corresponds to the JSON schema field "storage".
+	Storage *StoragePermission `json:"storage,omitempty" yaml:"storage,omitempty" mapstructure:"storage,omitempty"`
+
 	// Subsonicapi corresponds to the JSON schema field "subsonicapi".
 	Subsonicapi *SubsonicAPIPermission `json:"subsonicapi,omitempty" yaml:"subsonicapi,omitempty" mapstructure:"subsonicapi,omitempty"`
 
@@ -203,6 +201,19 @@ type Permissions struct {
 // Scheduler service permissions for scheduling tasks
 type SchedulerPermission struct {
 	// Explanation for why scheduler access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
+// Scrobble retriever permissions for retrieving scrobbles from users
+type ScrobbleRetrieverPermission struct {
+	// Explanation for why scrobble retriever access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
+// Storage permissions for enabling persistent read-write storage exclusively for
+// the plugin
+type StoragePermission struct {
+	// Explanation for why storage access is needed
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 }
 
@@ -242,12 +253,6 @@ func (j *TaskQueuePermission) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// Enable experimental WebAssembly threads support
-type ThreadsFeature struct {
-	// Explanation for why threads support is needed
-	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
-}
-
 // Users service permissions for accessing user information
 type UsersPermission struct {
 	// Explanation for why users access is needed
@@ -260,6 +265,8 @@ type WebSocketPermission struct {
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 
 	// List of required host patterns for WebSocket connections (e.g.,
-	// 'api.example.com', '*.musicbrainz.org')
+	// 'api.example.com', '*.musicbrainz.org'). Required: with no entries every
+	// connection is blocked. A named host alone can't reach a private address; also
+	// list an IP, a CIDR (e.g., '10.0.0.0/8') or '*' for that
 	RequiredHosts []string `json:"requiredHosts,omitempty" yaml:"requiredHosts,omitempty" mapstructure:"requiredHosts,omitempty"`
 }

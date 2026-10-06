@@ -2,7 +2,6 @@ package model
 
 import (
 	"cmp"
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"iter"
@@ -15,15 +14,22 @@ import (
 	"github.com/gohugoio/hashstructure"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/zeebo/xxh3"
 )
 
 type MediaFile struct {
 	Annotations  `structs:"-" hash:"ignore"`
 	Bookmarkable `structs:"-" hash:"ignore"`
+	ItemImage    `structs:"-" hash:"ignore"`
+
+	// AlbumImage is the parent album's artwork state, hydrated alongside the track's own so a
+	// song's Jellyfin album-art tag can be pixel-versioned without a second query.
+	AlbumImage ItemImage `structs:"-" json:"-" hash:"ignore"`
 
 	ID          string `structs:"id"  json:"id" hash:"ignore"`
 	PID         string `structs:"pid" json:"-" hash:"ignore"`
@@ -100,16 +106,26 @@ type MediaFile struct {
 
 func (mf MediaFile) FullTitle() string {
 	if conf.Server.Subsonic.AppendSubtitle && len(mf.Tags[TagSubtitle]) > 0 {
-		return fmt.Sprintf("%s (%s)", mf.Title, mf.Tags[TagSubtitle][0])
+		return appendSuffix(mf.Title, mf.Tags[TagSubtitle][0])
 	}
 	return mf.Title
 }
 
 func (mf MediaFile) FullAlbumName() string {
 	if conf.Server.Subsonic.AppendAlbumVersion && len(mf.Tags[TagAlbumVersion]) > 0 {
-		return fmt.Sprintf("%s (%s)", mf.Album, mf.Tags[TagAlbumVersion][0])
+		return appendSuffix(mf.Album, mf.Tags[TagAlbumVersion][0])
 	}
 	return mf.Album
+}
+
+var bracketPairs = map[byte]byte{'(': ')', '[': ']', '{': '}', '<': '>'}
+
+func appendSuffix(base, suffix string) string {
+	suffix = strings.TrimSpace(suffix)
+	if len(suffix) >= 2 && bracketPairs[suffix[0]] == suffix[len(suffix)-1] {
+		return base + " " + suffix
+	}
+	return base + " (" + suffix + ")"
 }
 
 func (mf MediaFile) ContentType() string {
@@ -129,13 +145,15 @@ func (mf MediaFile) CoverArtID() ArtworkID {
 // otherwise it returns the album artwork ID.
 func (mf MediaFile) DiscCoverArtID() ArtworkID {
 	if mf.DiscNumber > 0 {
-		return NewArtworkID(KindDiscArtwork, DiscArtworkID(mf.AlbumID, mf.DiscNumber), nil)
+		return ArtworkID{Kind: KindDiscArtwork, ID: DiscArtworkID(mf.AlbumID, mf.DiscNumber), Hash: mf.ImageHash}
 	}
 	return mf.AlbumCoverArtID()
 }
 
+// AlbumCoverArtID uses AlbumImage, not the track's own ItemImage: an album id must carry the
+// album's content hash even when the track resolved art of its own.
 func (mf MediaFile) AlbumCoverArtID() ArtworkID {
-	return artworkIDFromAlbum(Album{ID: mf.AlbumID})
+	return artworkIDFromAlbum(Album{ID: mf.AlbumID, ItemImage: mf.AlbumImage})
 }
 
 func (mf MediaFile) StructuredLyrics() (LyricList, error) {
@@ -145,6 +163,12 @@ func (mf MediaFile) StructuredLyrics() (LyricList, error) {
 		return nil, err
 	}
 	return lyrics, nil
+}
+
+// HasEmbeddedLyrics reports whether the lyrics column holds any lyrics. It is never "" post-scan;
+// no-lyrics is normalized to the "[]" sentinel, so string emptiness alone is meaningless.
+func (mf MediaFile) HasEmbeddedLyrics() bool {
+	return mf.Lyrics != "" && mf.Lyrics != "[]"
 }
 
 // String is mainly used for debugging
@@ -208,7 +232,7 @@ func (mf MediaFile) Hash() string {
 		ZeroNil:         true,
 	}
 	hash, _ := hashstructure.Hash(mf, opts)
-	sum := md5.New()
+	sum := xxh3.New()
 	sum.Write(fmt.Appendf(nil, "%d", hash))
 	sum.Write(mf.Tags.Hash())
 	sum.Write(mf.Participants.Hash())
@@ -308,6 +332,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 	originalYears := make([]int, 0, len(mfs))
 	originalDates := make([]string, 0, len(mfs))
 	releaseDates := make([]string, 0, len(mfs))
+	rgAlbumGains := make([]*float64, 0, len(mfs))
+	rgAlbumPeaks := make([]*float64, 0, len(mfs))
 	tags := make(TagList, 0, len(mfs[0].Tags)*len(mfs))
 
 	a.Missing = true
@@ -338,6 +364,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 		originalYears = append(originalYears, m.OriginalYear)
 		originalDates = append(originalDates, m.OriginalDate)
 		releaseDates = append(releaseDates, m.ReleaseDate)
+		rgAlbumGains = append(rgAlbumGains, m.RGAlbumGain)
+		rgAlbumPeaks = append(rgAlbumPeaks, m.RGAlbumPeak)
 		comments = append(comments, m.Comment)
 		mbzAlbumIds = append(mbzAlbumIds, m.MbzAlbumID)
 		mbzReleaseGroupIds = append(mbzReleaseGroupIds, m.MbzReleaseGroupID)
@@ -372,6 +400,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.Comment, _ = allOrNothing(comments)
 	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds)
 	a.MbzReleaseGroupID = slice.MostFrequent(mbzReleaseGroupIds)
+	a.RGAlbumGain = mostFrequentPtr(rgAlbumGains)
+	a.RGAlbumPeak = mostFrequentPtr(rgAlbumPeaks)
 	fixAlbumArtist(&a)
 
 	return a
@@ -399,6 +429,32 @@ func minMax(items []int) (int, int) {
 		}
 	}
 	return mn, mx
+}
+
+// mostFrequentPtr returns a pointer to the most common non-nil value, or nil if
+// none. It counts by dereferenced value so a genuine 0.0 is a real candidate
+// (slice.MostFrequent skips the zero value and compares pointers by identity).
+func mostFrequentPtr(items []*float64) *float64 {
+	var counts map[float64]int
+	var best float64
+	var bestCount int
+	for _, it := range items {
+		if it == nil {
+			continue
+		}
+		if counts == nil {
+			counts = map[float64]int{}
+		}
+		counts[*it]++
+		if counts[*it] > bestCount {
+			bestCount = counts[*it]
+			best = *it
+		}
+	}
+	if bestCount == 0 {
+		return nil
+	}
+	return &best
 }
 
 func newer(t1, t2 time.Time) time.Time {
@@ -493,11 +549,23 @@ type MediaFileRepository interface {
 	// filters as GetAll. Sort/Order are ignored.
 	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	GetAllByTags(tag TagName, values []string, options ...QueryOptions) (MediaFiles, error)
+	// MatchesCriteria reports whether the media file matches the criteria's rule
+	// expression, using the logged user's annotations. Limit and offset are ignored.
+	MatchesCriteria(id string, c criteria.Criteria) (bool, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
+	// GetAlbumIDsByFolder returns the distinct IDs of albums with non-missing tracks in the given
+	// folders or their direct children.
+	GetAlbumIDsByFolder(lib Library, folderIDs ...string) ([]string, error)
+	// GetCursorWithArtwork streams like GetCursor, hydrated, so callers that render images don't
+	// pay the scanner's per-row cost; it uses the same id pre-pass as the other cursors.
+	GetCursorWithArtwork(options ...QueryOptions) (MediaFileCursor, error)
 	Delete(id string) error
 	DeleteMissing(ids []string) error
 	DeleteAllMissing() (int64, error)
 	FindByPaths(paths []string) (MediaFiles, error)
+	// ReassignReferences moves annotations, bookmarks and playlist entries from prevID to newID,
+	// keeping newID's own row wherever a user has both.
+	ReassignReferences(prevID, newID string) error
 
 	// The following methods are used exclusively by the scanner:
 	MarkMissing(bool, ...*MediaFile) error

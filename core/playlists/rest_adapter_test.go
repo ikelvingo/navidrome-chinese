@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -37,7 +37,7 @@ var _ = Describe("REST Adapter", func() {
 			mockPlsRepo.Data = map[string]*model.Playlist{
 				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 			}
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 		})
 
 		Describe("Save", func() {
@@ -158,6 +158,25 @@ var _ = Describe("REST Adapter", func() {
 				err := repo.Update("smart-1", pls)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockPlsRepo.Last.Rules).To(Equal(newRules))
+			})
+
+			It("invalidates the imported hash when rules change, so the next scan re-syncs the file", func() {
+				mockPlsRepo.Data["smart-1"] = &model.Playlist{
+					ID:           "smart-1",
+					Name:         "Smart Playlist",
+					OwnerID:      "user-1",
+					Path:         "/music/smart.nsp",
+					Sync:         true,
+					ImportedHash: hashOf("file content"),
+					Rules:        &criteria.Criteria{Expression: criteria.Contains{"title": "old"}},
+				}
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				newRules := &criteria.Criteria{Expression: criteria.Contains{"title": "new"}}
+				pls := &model.Playlist{Rules: newRules}
+				err := repo.Update("smart-1", pls, "rules")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockPlsRepo.Last.ImportedHash).To(BeEmpty())
 			})
 
 			It("allows toggling sync for file-backed playlists", func() {
@@ -312,6 +331,38 @@ var _ = Describe("REST Adapter", func() {
 					Expect(mockPlsRepo.Last.Name).To(Equal("Smart Original"))
 					Expect(mockPlsRepo.Last.Comment).To(Equal("smart comment"))
 					Expect(mockPlsRepo.Last.Public).To(BeTrue())
+				})
+
+				It("resets EvaluatedAt when rules change", func() {
+					evaluatedAt := time.Now().Add(-1 * time.Hour)
+					mockPlsRepo.Data["smart-reset"] = &model.Playlist{
+						ID:          "smart-reset",
+						Name:        "Smart",
+						OwnerID:     "user-1",
+						Rules:       &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}},
+						EvaluatedAt: &evaluatedAt,
+					}
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					newRules := &criteria.Criteria{Expression: criteria.Is{"genre": "Jazz"}}
+					err := repo.Update("smart-reset", &model.Playlist{Rules: newRules}, "rules")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.EvaluatedAt).To(BeNil())
+				})
+
+				It("keeps EvaluatedAt when rules are not changed", func() {
+					evaluatedAt := time.Now().Add(-1 * time.Hour)
+					mockPlsRepo.Data["smart-keep"] = &model.Playlist{
+						ID:          "smart-keep",
+						Name:        "Smart",
+						OwnerID:     "user-1",
+						Rules:       &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}},
+						EvaluatedAt: &evaluatedAt,
+					}
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("smart-keep", &model.Playlist{Name: "Renamed Smart"}, "name")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.EvaluatedAt).ToNot(BeNil())
+					Expect(*mockPlsRepo.Last.EvaluatedAt).To(BeTemporally("~", evaluatedAt, time.Second))
 				})
 
 				It("updates name and rules together (smart-playlist Edit form)", func() {

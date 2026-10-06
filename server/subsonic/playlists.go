@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
@@ -62,7 +61,7 @@ func (api *Router) getPlaylist(ctx context.Context, id string) (*responses.Subso
 func (api *Router) CreatePlaylist(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	p := req.Params(r)
-	songIds, _ := p.Strings("songId")
+	songIds := p.Strings("songId")
 	playlistId, _ := p.String("playlistId")
 	name, _ := p.String("name")
 	if playlistId == "" && name == "" {
@@ -99,7 +98,7 @@ func (api *Router) UpdatePlaylist(r *http.Request) (*responses.Subsonic, error) 
 	if err != nil {
 		return nil, err
 	}
-	songsToAdd, _ := p.Strings("songIdToAdd")
+	songsToAdd := p.Strings("songIdToAdd")
 	songIndexesToRemove, _ := p.Ints("songIndexToRemove")
 	var plsName *string
 	if s, err := p.String("name"); err == nil {
@@ -133,15 +132,7 @@ func (api *Router) buildPlaylist(ctx context.Context, p model.Playlist) response
 	pls.SongCount = int32(p.SongCount)
 	pls.Duration = int32(p.Duration)
 	pls.Created = p.CreatedAt
-	if p.IsSmartPlaylist() {
-		if p.EvaluatedAt != nil {
-			pls.Changed = *p.EvaluatedAt
-		} else {
-			pls.Changed = time.Now()
-		}
-	} else {
-		pls.Changed = p.UpdatedAt
-	}
+	pls.Changed = p.UpdatedAt
 
 	player, ok := request.PlayerFrom(ctx)
 	if ok && isClientInList(conf.Server.Subsonic.MinimalClients, player.Client) {
@@ -151,7 +142,7 @@ func (api *Router) buildPlaylist(ctx context.Context, p model.Playlist) response
 	pls.Comment = p.Comment
 	pls.Owner = p.OwnerName
 	pls.Public = p.Public
-	pls.CoverArt = p.CoverArtID().String()
+	pls.CoverArt = coverArtOrEmpty(p.CoverArtID(), p.ImageAbsent)
 	pls.OpenSubsonicPlaylist = buildOSPlaylist(ctx, p)
 
 	return pls
@@ -168,11 +159,11 @@ func buildOSPlaylist(ctx context.Context, p model.Playlist) *responses.OpenSubso
 		pls.Readonly = true
 
 		if p.EvaluatedAt != nil {
-			pls.ValidUntil = new(p.EvaluatedAt.Add(conf.Server.SmartPlaylistRefreshDelay))
+			pls.ValidUntil = new(p.EvaluatedAt.Add(p.RefreshDelay()))
 		}
 	} else {
 		user, ok := request.UserFrom(ctx)
-		pls.Readonly = !ok || p.OwnerID != user.ID
+		pls.Readonly = !ok || p.OwnerID != user.ID || !p.TracksEditable()
 	}
 
 	return &pls

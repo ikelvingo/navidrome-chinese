@@ -6,6 +6,7 @@ import (
 	"os"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -42,25 +43,25 @@ This will clear the cached external info so it will be re-fetched from external 
 
 Examples:
   # Refresh artist by ID
-  navidrome refresh --id "ar-xxxxx"
+  navidrome refresh --id "xxxxx"
 
   # Refresh artist by name (partial match)
   navidrome refresh --name "周杰伦"
 
   # Clear all external info and refresh
-  navidrome refresh --id "ar-xxxxx" --clear-all
+  navidrome refresh --id "xxxxx" --clear-all
 
   # Only clear images
   navidrome refresh --name "Taylor Swift" --clear-images
 
   # Refresh artist and their albums
-  navidrome refresh --id "ar-xxxxx" --albums`,
+  navidrome refresh --id "xxxxx" --albums`,
 	Run: func(cmd *cobra.Command, args []string) {
-		runRefresh()
+		runRefreshArtist()
 	},
 }
 
-func runRefresh() {
+func runRefreshArtist() {
 	if artistID == "" && artistName == "" {
 		fmt.Println("Error: Either --id or --name must be specified")
 		os.Exit(1)
@@ -162,7 +163,20 @@ func clearArtistExternalInfo(ctx context.Context, ds model.DataStore, artist *mo
 		artist.ExternalUrl = ""
 	}
 
-	return ds.Artist(ctx).UpdateExternalInfo(artist)
+	if err := ds.Artist(ctx).UpdateExternalInfo(artist); err != nil {
+		return err
+	}
+
+	// Since v0.64.0 the artwork pipeline caches resolved images on its own and no longer
+	// reads these legacy URL fields, so clearing them alone no longer re-fetches the
+	// displayed image. Drop the cached artwork and re-queue it at Bump priority.
+	if clearAll || clearImages {
+		if err := artwork.Refresh(ctx, ds, model.KindArtistArtwork, artist.ID); err != nil {
+			log.Warn("Could not re-queue artist artwork for refresh", "artist", artist.Name, "id", artist.ID, err)
+		}
+	}
+
+	return nil
 }
 
 func clearAlbumExternalInfo(ctx context.Context, ds model.DataStore, album *model.Album) error {
@@ -180,5 +194,15 @@ func clearAlbumExternalInfo(ctx context.Context, ds model.DataStore, album *mode
 		album.ExternalUrl = ""
 	}
 
-	return ds.Album(ctx).UpdateExternalInfo(album)
+	if err := ds.Album(ctx).UpdateExternalInfo(album); err != nil {
+		return err
+	}
+
+	if clearAll || clearImages {
+		if err := artwork.Refresh(ctx, ds, model.KindAlbumArtwork, album.ID); err != nil {
+			log.Warn("Could not re-queue album artwork for refresh", "album", album.Name, "id", album.ID, err)
+		}
+	}
+
+	return nil
 }

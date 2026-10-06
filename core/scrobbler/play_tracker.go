@@ -2,6 +2,7 @@ package scrobbler
 
 import (
 	"context"
+	"encoding/json"
 	"maps"
 	"slices"
 	"sync"
@@ -11,10 +12,12 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/cache"
 	"github.com/navidrome/navidrome/utils/singleton"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 const (
@@ -43,6 +46,10 @@ type PlaybackSession struct {
 	PositionMs   int64
 	PlaybackRate float64
 	LastReport   time.Time
+
+	// Verdict from the last report, for the expiry callback: its context carries only
+	// a stub user, so it cannot evaluate the filter itself.
+	filtered bool
 }
 
 type Submission struct {
@@ -68,8 +75,9 @@ type nowPlayingEntry struct {
 }
 
 type playbackReportEntry struct {
-	ctx  context.Context
-	info PlaybackSession
+	ctx      context.Context
+	info     PlaybackSession
+	filtered bool
 }
 
 type PlayTracker interface {
@@ -89,6 +97,7 @@ type playTracker struct {
 	ds                model.DataStore
 	broker            events.Broker
 	playMap           cache.SimpleCache[string, PlaybackSession]
+	sessionsMu        sync.Mutex // serializes playMap check-then-write across concurrent reports
 	builtinScrobblers map[string]Scrobbler
 	pluginScrobblers  map[string]Scrobbler
 	pluginLoader      PluginLoader
@@ -144,7 +153,7 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 			log.Trace("Enqueueing PlaybackReport for expired session", "session", info)
 			info.State = StateExpired
 			info.LastReport = time.Now()
-			p.enqueuePlaybackReport(ctx, info)
+			p.enqueuePlaybackReport(ctx, info, info.filtered)
 		}
 	})
 
@@ -249,6 +258,12 @@ func (p *playTracker) getActiveScrobblers() map[string]Scrobbler {
 	return combined
 }
 
+// hasPlayingSession reports whether clientId's current session is already playing mediaId.
+func (p *playTracker) hasPlayingSession(clientId, mediaId string) bool {
+	cur, err := p.playMap.Get(clientId)
+	return err == nil && cur.MediaFile.ID == mediaId && cur.State == StatePlaying
+}
+
 func remainingTTL(durationSec float32, positionMs int64, rate float64) time.Duration {
 	if rate <= 0 {
 		rate = 1.0
@@ -266,14 +281,26 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 
 	now := time.Now()
 
+	// One verdict per report, reused by every dispatch below, so a filter reading
+	// annotations cannot decide differently on either side of incPlay.
+	var filtered bool
+
 	switch params.State {
 	case StateStarting:
+		// Clients may send starting/playing unordered; a late "starting" must not downgrade
+		// a playing session, or position estimation freezes until the next report.
+		if p.hasPlayingSession(clientId, params.MediaId) {
+			log.Trace(ctx, "Ignoring out-of-order starting report for playing session", "clientId", clientId, "mediaId", params.MediaId)
+			return nil
+		}
 		mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
 		if err != nil {
 			return err
 		}
+		filtered = p.isFilteredOut(ctx, mf)
 		info := PlaybackSession{
 			MediaFile:    *mf,
+			filtered:     filtered,
 			Start:        now,
 			UserId:       user.ID,
 			Username:     user.UserName,
@@ -284,11 +311,19 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			PlaybackRate: params.PlaybackRate,
 			LastReport:   now,
 		}
+		p.sessionsMu.Lock()
+		// re-check: a concurrent "playing" report may have created the session during the load above
+		if p.hasPlayingSession(clientId, params.MediaId) {
+			p.sessionsMu.Unlock()
+			log.Trace(ctx, "Ignoring out-of-order starting report for playing session", "clientId", clientId, "mediaId", params.MediaId)
+			return nil
+		}
 		err = p.playMap.AddWithTTL(clientId, info, remainingTTL(mf.Duration, params.PositionMs, params.PlaybackRate))
+		p.sessionsMu.Unlock()
 		if err != nil {
 			log.Warn(ctx, "Error adding PlaybackSession to cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
 		}
-		p.enqueuePlaybackReport(ctx, info)
+		p.enqueuePlaybackReport(ctx, info, filtered)
 
 	case StatePlaying, StatePaused:
 		info, getErr := p.playMap.Get(clientId)
@@ -310,25 +345,32 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		info.PositionMs = params.PositionMs
 		info.PlaybackRate = params.PlaybackRate
 		info.LastReport = now
+		filtered = p.isFilteredOut(ctx, &info.MediaFile)
+		info.filtered = filtered
 		ttl := 30 * time.Minute
 		if params.State == StatePlaying {
 			ttl = remainingTTL(info.MediaFile.Duration, params.PositionMs, params.PlaybackRate)
 		}
 		log.Trace(ctx, "Updating PlaybackSession in cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, "positionMs", params.PositionMs, "playbackRate", params.PlaybackRate, "ttl", ttl)
+		p.sessionsMu.Lock()
 		err := p.playMap.AddWithTTL(clientId, info, ttl)
+		p.sessionsMu.Unlock()
 		if err != nil {
 			log.Warn(ctx, "Error updating PlaybackSession in cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
 		}
-		p.enqueuePlaybackReport(ctx, info)
+		p.enqueuePlaybackReport(ctx, info, filtered)
 
 	case StateStopped:
 		var loadedMF *model.MediaFile
+		haveVerdict := false
 		if !params.IgnoreScrobble && player.ScrobbleEnabled {
 			mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
 			if err != nil {
 				return err
 			}
 			loadedMF = mf
+			filtered = p.isFilteredOut(ctx, mf)
+			haveVerdict = true
 			trackDurationMs := int64(mf.Duration * 1000)
 			threshold := min(trackDurationMs*50/100, 240_000)
 			if params.PositionMs >= threshold {
@@ -336,9 +378,20 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 				if err != nil {
 					log.Warn(ctx, "Error updating play counts", "id", mf.ID, "track", mf.Title, "user", user.UserName, err)
 				}
-				p.dispatchScrobble(ctx, mf, now)
+				p.dispatchScrobble(ctx, mf, now, filtered)
 			}
 		}
+		p.sessionsMu.Lock()
+		info, getErr := p.playMap.Get(clientId)
+		// A late stop for a previous track must not end the current session nor reach
+		// playback reporters, or presence-style plugins would clear the active track.
+		if getErr == nil && info.MediaFile.ID != params.MediaId {
+			p.sessionsMu.Unlock()
+			log.Trace(ctx, "Ignoring out-of-order stopped report for different track", "clientId", clientId, "stoppedMediaId", params.MediaId, "currentMediaId", info.MediaFile.ID)
+			return nil
+		}
+		p.playMap.Remove(clientId)
+		p.sessionsMu.Unlock()
 		stoppedInfo := PlaybackSession{
 			UserId:       user.ID,
 			Username:     user.UserName,
@@ -349,7 +402,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			PlaybackRate: params.PlaybackRate,
 			LastReport:   now,
 		}
-		if info, getErr := p.playMap.Get(clientId); getErr == nil {
+		if getErr == nil {
 			stoppedInfo.MediaFile = info.MediaFile
 			stoppedInfo.Start = info.Start
 		} else {
@@ -363,8 +416,10 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			}
 			stoppedInfo.MediaFile = *mf
 		}
-		p.enqueuePlaybackReport(ctx, stoppedInfo)
-		p.playMap.Remove(clientId)
+		if !haveVerdict {
+			filtered = p.isFilteredOut(ctx, &stoppedInfo.MediaFile)
+		}
+		p.enqueuePlaybackReport(ctx, stoppedInfo, filtered)
 	}
 
 	if conf.Server.EnableNowPlaying {
@@ -380,7 +435,9 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 	// scrobbler plugins) returned by getActiveScrobblers; see dispatchNowPlaying.
 	if player.ScrobbleEnabled &&
 		(params.State == StateStarting || params.State == StatePlaying) {
-		if info, err := p.playMap.Get(clientId); err == nil {
+		if filtered {
+			log.Debug(ctx, "Ignoring external NowPlaying update for filtered track", "mediaId", params.MediaId)
+		} else if info, err := p.playMap.Get(clientId); err == nil {
 			p.enqueueNowPlaying(ctx, clientId, user.ID, &info.MediaFile, int(params.PositionMs/1000))
 		}
 	}
@@ -388,8 +445,14 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 	return nil
 }
 
-func (p *playTracker) GetNowPlaying(_ context.Context) ([]PlaybackSession, error) {
+func (p *playTracker) GetNowPlaying(ctx context.Context) ([]PlaybackSession, error) {
+	// The cache is process-global, so it holds every user's playback, across all libraries.
 	res := p.playMap.Values()
+	if user, ok := request.UserFrom(ctx); ok {
+		res = slice.Filter(res, func(s PlaybackSession) bool {
+			return user.HasLibraryAccess(s.MediaFile.LibraryID)
+		})
+	}
 	slices.SortFunc(res, func(a, b PlaybackSession) int {
 		return b.Start.Compare(a.Start)
 	})
@@ -419,6 +482,7 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 			log.Error(ctx, "Cannot find track for scrobbling", "id", s.TrackID, "user", username, err)
 			continue
 		}
+		filtered := p.isFilteredOut(ctx, mf)
 		err = p.incPlay(ctx, mf, s.Timestamp)
 		if err != nil {
 			log.Error(ctx, "Error updating play counts", "id", mf.ID, "track", mf.Title, "user", username, err)
@@ -427,7 +491,7 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 			event.With("song", mf.ID).With("album", mf.AlbumID).With("artist", mf.AlbumArtistID)
 			log.Info(ctx, "Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username, "timestamp", s.Timestamp)
 			if player.ScrobbleEnabled {
-				p.dispatchScrobble(ctx, mf, s.Timestamp)
+				p.dispatchScrobble(ctx, mf, s.Timestamp, filtered)
 			}
 		}
 	}
@@ -461,9 +525,34 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 	})
 }
 
-func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, playTime time.Time) {
+// Take this verdict before incPlay mutates what a filter reads, and independently of
+// which scrobblers are active: it can be stored on a session and dispatched much later.
+// Any parse or query failure fails open, because filtering must not break scrobbling.
+func (p *playTracker) isFilteredOut(ctx context.Context, t *model.MediaFile) bool {
+	u, _ := request.UserFrom(ctx)
+	if u.ScrobbleFilter == "" {
+		return false
+	}
+	var c criteria.Criteria
+	if err := json.Unmarshal([]byte(u.ScrobbleFilter), &c); err != nil {
+		log.Warn(ctx, "Invalid scrobble filter, ignoring", "user", u.UserName, err)
+		return false
+	}
+	match, err := p.ds.MediaFile(ctx).MatchesCriteria(t.ID, c)
+	if err != nil {
+		log.Warn(ctx, "Error evaluating scrobble filter, ignoring", "user", u.UserName, "track", t.Title, err)
+		return false
+	}
+	return match
+}
+
+func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, playTime time.Time, filtered bool) {
 	if t.Artist == consts.UnknownArtist {
 		log.Debug(ctx, "Ignoring external Scrobble for track with unknown artist", "track", t.Title, "artist", t.Artist)
+		return
+	}
+	if filtered {
+		log.Debug(ctx, "Ignoring external Scrobble for filtered track", "track", t.Title, "artist", t.Artist)
 		return
 	}
 

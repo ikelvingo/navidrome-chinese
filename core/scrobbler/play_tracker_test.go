@@ -3,6 +3,7 @@ package scrobbler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -13,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
@@ -45,6 +47,37 @@ func (m *mockPluginLoader) LoadScrobbler(name string) (Scrobbler, bool) {
 	return s, ok
 }
 
+// flipOnPlayRepo reports one filter verdict before the play is counted and another
+// after, reproducing a filter that reads annotations incPlay mutates.
+type flipOnPlayRepo struct {
+	model.MediaFileRepository
+	before, after bool
+	played        atomic.Bool
+}
+
+func (r *flipOnPlayRepo) IncPlayCount(id string, ts time.Time) error {
+	r.played.Store(true)
+	return r.MediaFileRepository.IncPlayCount(id, ts)
+}
+
+func (r *flipOnPlayRepo) MatchesCriteria(string, criteria.Criteria) (bool, error) {
+	if r.played.Load() {
+		return r.after, nil
+	}
+	return r.before, nil
+}
+
+// slowMediaFileRepo widens the window between a report's session check and its
+// write, making check-then-write races reproducible.
+type slowMediaFileRepo struct {
+	model.MediaFileRepository
+}
+
+func (s *slowMediaFileRepo) GetWithParticipants(id string) (*model.MediaFile, error) {
+	time.Sleep(5 * time.Millisecond)
+	return s.MediaFileRepository.GetWithParticipants(id)
+}
+
 var _ = Describe("PlayTracker", func() {
 	var ctx context.Context
 	var ds model.DataStore
@@ -59,7 +92,7 @@ var _ = Describe("PlayTracker", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		ctx = GinkgoT().Context()
-		ctx = request.WithUser(ctx, model.User{ID: "u-1"})
+		ctx = request.WithUser(ctx, model.User{ID: "u-1", Libraries: model.Libraries{{ID: 1}}})
 		ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
 		ds = &tests.MockDataStore{}
 		fake = &fakeScrobbler{Authorized: true}
@@ -75,6 +108,7 @@ var _ = Describe("PlayTracker", func() {
 
 		track = model.MediaFile{
 			ID:             "123",
+			LibraryID:      1,
 			Title:          "Track Title",
 			Album:          "Track Album",
 			AlbumID:        "al-1",
@@ -140,6 +174,46 @@ var _ = Describe("PlayTracker", func() {
 			Expect(playing[1].PlayerName).To(Equal("player-one"))
 			Expect(playing[1].Username).To(Equal("user-1"))
 			Expect(playing[1].MediaFile.ID).To(Equal("123"))
+		})
+
+		It("hides sessions playing from libraries the caller cannot access", func() {
+			hidden := track
+			hidden.ID = "789"
+			hidden.LibraryID = 2
+			_ = ds.MediaFile(ctx).Put(&hidden)
+			reporter := request.WithPlayer(
+				request.WithUser(GinkgoT().Context(), model.User{ID: "u-2", UserName: "user-2"}),
+				model.Player{ScrobbleEnabled: true},
+			)
+			_ = tracker.ReportPlayback(reporter, ReportPlaybackParams{
+				MediaId: "789", PositionMs: 0, State: StatePlaying, PlaybackRate: 1.0, ClientId: "player-2", ClientName: "player-two",
+			})
+
+			playing, err := tracker.GetNowPlaying(ctx)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(playing).To(BeEmpty(), "u-1 is granted library 1 only")
+		})
+
+		It("shows every session to an admin", func() {
+			hidden := track
+			hidden.ID = "789"
+			hidden.LibraryID = 2
+			_ = ds.MediaFile(ctx).Put(&hidden)
+			reporter := request.WithPlayer(
+				request.WithUser(GinkgoT().Context(), model.User{ID: "u-2", UserName: "user-2"}),
+				model.Player{ScrobbleEnabled: true},
+			)
+			_ = tracker.ReportPlayback(reporter, ReportPlaybackParams{
+				MediaId: "789", PositionMs: 0, State: StatePlaying, PlaybackRate: 1.0, ClientId: "player-2", ClientName: "player-two",
+			})
+
+			adminCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "adm", IsAdmin: true})
+			playing, err := tracker.GetNowPlaying(adminCtx)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(playing).To(HaveLen(1))
+			Expect(playing[0].MediaFile.ID).To(Equal("789"))
 		})
 	})
 
@@ -260,7 +334,7 @@ var _ = Describe("PlayTracker", func() {
 		})
 
 		It("increments play counts even if it cannot scrobble", func() {
-			fake.Error = errors.New("error")
+			fake.SetError(errors.New("error"))
 
 			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
 
@@ -290,7 +364,7 @@ var _ = Describe("PlayTracker", func() {
 				Expect(mockScrobble.RecordedScrobbles).To(HaveLen(1))
 				Expect(mockScrobble.RecordedScrobbles[0].MediaFileID).To(Equal("123"))
 				Expect(mockScrobble.RecordedScrobbles[0].UserID).To(Equal("u-1"))
-				Expect(mockScrobble.RecordedScrobbles[0].SubmissionTime).To(Equal(ts))
+				Expect(mockScrobble.RecordedScrobbles[0].SubmissionTime).To(Equal(ts.Unix()))
 			})
 
 			It("does not record scrobble when history is disabled", func() {
@@ -304,6 +378,185 @@ var _ = Describe("PlayTracker", func() {
 				mockDS := ds.(*tests.MockDataStore)
 				mockScrobble := mockDS.Scrobble(ctx).(*tests.MockScrobbleRepo)
 				Expect(mockScrobble.RecordedScrobbles).To(HaveLen(0))
+			})
+		})
+	})
+
+	Describe("Scrobble filter", func() {
+		var repo *tests.MockMediaFileRepo
+
+		BeforeEach(func() {
+			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1",
+				ScrobbleFilter: `{"all":[{"contains":{"title":"Track"}}]}`})
+			repo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
+		})
+
+		It("does not send a matching track to the agent", func() {
+			repo.MatchesCriteriaValue = true
+
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
+		})
+
+		It("still increments play counts for a filtered track", func() {
+			repo.MatchesCriteriaValue = true
+
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(track.PlayCount).To(Equal(int64(1)))
+			Expect(album.PlayCount).To(Equal(int64(1)))
+		})
+
+		It("sends a non-matching track to the agent", func() {
+			repo.MatchesCriteriaValue = false
+
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.ScrobbleCalled.Load()).To(BeTrue())
+		})
+
+		It("fails open when evaluation errors", func() {
+			repo.MatchesCriteriaErr = errors.New("boom")
+
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.ScrobbleCalled.Load()).To(BeTrue())
+		})
+
+		It("fails open when the stored filter is not valid JSON", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1", ScrobbleFilter: `{broken`})
+			repo.MatchesCriteriaValue = true
+
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.ScrobbleCalled.Load()).To(BeTrue())
+		})
+
+		It("does not send now-playing for a filtered track", func() {
+			repo.MatchesCriteriaValue = true
+
+			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", State: StateStarting, ClientId: "player-1", ClientName: "player"})
+
+			Expect(err).ToNot(HaveOccurred())
+			Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
+		})
+
+		It("does not send playback reports for a filtered track", func() {
+			repo.MatchesCriteriaValue = true
+
+			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", State: StateStarting, ClientId: "player-1", ClientName: "player"})
+
+			Expect(err).ToNot(HaveOccurred())
+			Consistently(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeFalse())
+		})
+
+		It("sends playback reports for a non-matching track", func() {
+			repo.MatchesCriteriaValue = false
+
+			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", State: StateStarting, ClientId: "player-1", ClientName: "player"})
+
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+		})
+
+		It("evaluates the filter even when no scrobbler is active yet", func() {
+			// The verdict is stored on the session and dispatched at expiry, by which
+			// time a plugin scrobbler may have been enabled.
+			tracker.builtinScrobblers = map[string]Scrobbler{}
+			repo.MatchesCriteriaValue = true
+
+			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", State: StatePlaying, ClientId: "player-12", ClientName: "player"})
+
+			Expect(err).ToNot(HaveOccurred())
+			stored, getErr := tracker.playMap.Get("player-12")
+			Expect(getErr).ToNot(HaveOccurred())
+			Expect(stored.filtered).To(BeTrue())
+		})
+
+		Context("when incPlay itself flips the filter", func() {
+			// A filter on playCount or lastPlayed changes verdict the moment incPlay
+			// commits, so the verdict has to be taken before it, not at dispatch time.
+			var flip *flipOnPlayRepo
+
+			install := func(before, after bool) {
+				flip = &flipOnPlayRepo{MediaFileRepository: ds.MediaFile(ctx), before: before, after: after}
+				ds.(*tests.MockDataStore).MockedMediaFile = flip
+			}
+
+			It("does not scrobble a track the filter matched before the play was counted", func() {
+				install(true, false)
+
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", State: StateStopped, PositionMs: 120_000, ClientId: "player-1", ClientName: "player"})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(flip.played.Load()).To(BeTrue(), "incPlay must still have run")
+				Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
+			})
+
+			It("still sends the stopped report when the filter only starts matching after the play", func() {
+				install(false, true)
+
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", State: StateStopped, PositionMs: 120_000, ClientId: "player-1", ClientName: "player"})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(flip.played.Load()).To(BeTrue(), "incPlay must still have run")
+				Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+			})
+
+			It("does not report an expired session for a filtered track", func() {
+				// The expiry callback runs with a stub user, so it cannot evaluate the
+				// filter itself and must reuse the verdict stored on the session.
+				info := PlaybackSession{
+					MediaFile: track, Start: time.Now(), UserId: "u-1", Username: "user-1",
+					PlayerId: "player-9", PlayerName: "test-player", State: StatePlaying, filtered: true,
+				}
+				_ = tracker.playMap.AddWithTTL("player-9", info, 10*time.Millisecond)
+
+				Consistently(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeFalse())
+			})
+
+			It("still reports an expired session for a track that is not filtered", func() {
+				info := PlaybackSession{
+					MediaFile: track, Start: time.Now(), UserId: "u-1", Username: "user-1",
+					PlayerId: "player-10", PlayerName: "test-player", State: StatePlaying, filtered: false,
+				}
+				_ = tracker.playMap.AddWithTTL("player-10", info, 10*time.Millisecond)
+
+				Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+			})
+
+			It("stores the verdict on the session so expiry can reuse it", func() {
+				repo.MatchesCriteriaValue = true
+
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", State: StatePlaying, ClientId: "player-11", ClientName: "player"})
+
+				Expect(err).ToNot(HaveOccurred())
+				stored, getErr := tracker.playMap.Get("player-11")
+				Expect(getErr).ToNot(HaveOccurred())
+				Expect(stored.filtered).To(BeTrue())
+			})
+
+			It("does not scrobble a Submit whose filter matched before the play was counted", func() {
+				install(true, false)
+
+				err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(flip.played.Load()).To(BeTrue(), "incPlay must still have run")
+				Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
 			})
 		})
 	})
@@ -376,18 +629,23 @@ var _ = Describe("PlayTracker", func() {
 			Expect(playing).To(BeEmpty())
 		})
 
-		It("starting replaces existing entry for same player", func() {
+		It("starting replaces existing entry when switching tracks on same player", func() {
+			track2 := track
+			track2.ID = "456"
+			_ = ds.MediaFile(ctx).Put(&track2)
+
 			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
 				MediaId: "123", PositionMs: 50000, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
 			})
 			Expect(err).ToNot(HaveOccurred())
 			err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
-				MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
+				MediaId: "456", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
 			})
 			Expect(err).ToNot(HaveOccurred())
 			playing, err := tracker.GetNowPlaying(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(playing).To(HaveLen(1))
+			Expect(playing[0].MediaFile.ID).To(Equal("456"))
 			Expect(playing[0].State).To(Equal("starting"))
 			Expect(playing[0].PositionMs).To(Equal(int64(0)))
 		})
@@ -693,6 +951,119 @@ var _ = Describe("PlayTracker", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(track.PlayCount).To(Equal(int64(0)))
+			})
+		})
+
+		Describe("resilience (out-of-order reports)", func() {
+			BeforeEach(func() {
+				track2 := track
+				track2.ID = "456"
+				_ = ds.MediaFile(ctx).Put(&track2)
+			})
+
+			It("does not downgrade an actively playing session when a late starting report arrives for the same track", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 1000, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				playing, err := tracker.GetNowPlaying(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playing).To(HaveLen(1))
+				Expect(playing[0].State).To(Equal("playing"))
+				Expect(playing[0].PositionMs).To(BeNumerically(">=", int64(1000)))
+			})
+
+			It("keeps the current session when a stopped report arrives for a different track", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "456", PositionMs: 0, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 90000, State: "stopped", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				playing, err := tracker.GetNowPlaying(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playing).To(HaveLen(1))
+				Expect(playing[0].MediaFile.ID).To(Equal("456"))
+				Expect(playing[0].State).To(Equal("playing"))
+			})
+
+			It("still auto-scrobbles the stopped track when the current session is for a different track", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "456", PositionMs: 0, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 90000, State: "stopped", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(track.PlayCount).To(Equal(int64(1)))
+			})
+
+			It("does not dispatch NowPlaying from an ignored out-of-order starting report", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 60000, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(func() bool { return fake.GetNowPlayingCalled() }).Should(BeTrue())
+				fake.nowPlayingCalled.Store(false)
+
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
+			})
+
+			It("never lets a concurrent starting report downgrade the playing session", func() {
+				ds.(*tests.MockDataStore).MockedMediaFile = &slowMediaFileRepo{MediaFileRepository: ds.MediaFile(ctx)}
+				for i := range 20 {
+					raceClientId := fmt.Sprintf("race-client-%d", i)
+					var wg sync.WaitGroup
+					wg.Add(2)
+					go func() {
+						defer wg.Done()
+						defer GinkgoRecover()
+						_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+							MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: raceClientId,
+						})
+					}()
+					go func() {
+						defer wg.Done()
+						defer GinkgoRecover()
+						_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+							MediaId: "123", PositionMs: 0, State: "playing", PlaybackRate: 1.0, ClientId: raceClientId,
+						})
+					}()
+					wg.Wait()
+					info, err := tracker.playMap.Get(raceClientId)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(info.State).To(Equal("playing"), "iteration %d", i)
+				}
+			})
+
+			It("does NOT forward a stopped report for a different track to playback reporters", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "456", PositionMs: 0, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+				fake.PlaybackReportCalled.Store(false)
+				fake.LastPlaybackReport.Store(nil)
+
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 100000, State: "stopped", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				Consistently(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeFalse())
 			})
 		})
 
@@ -1084,7 +1455,25 @@ type fakeScrobbler struct {
 	position             atomic.Int32
 	LastScrobble         atomic.Pointer[Scrobble]
 	LastPlaybackReport   atomic.Pointer[PlaybackSession]
-	Error                error
+	err                  atomic.Pointer[error]
+	scrobbleAttempts     atomic.Int32
+}
+
+// SetError sets the error returned by IsAuthorized/NowPlaying/Scrobble/PlaybackReport.
+func (f *fakeScrobbler) SetError(err error) {
+	f.err.Store(&err)
+}
+
+func (f *fakeScrobbler) getError() error {
+	if e := f.err.Load(); e != nil {
+		return *e
+	}
+	return nil
+}
+
+// ScrobbleAttempts returns how many times Scrobble was called.
+func (f *fakeScrobbler) ScrobbleAttempts() int32 {
+	return f.scrobbleAttempts.Load()
 }
 
 func (f *fakeScrobbler) GetNowPlayingCalled() bool {
@@ -1110,13 +1499,13 @@ func (f *fakeScrobbler) GetTrack() *model.MediaFile {
 }
 
 func (f *fakeScrobbler) IsAuthorized(ctx context.Context, userId string) bool {
-	return f.Error == nil && f.Authorized
+	return f.getError() == nil && f.Authorized
 }
 
 func (f *fakeScrobbler) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
 	f.nowPlayingCalled.Store(true)
-	if f.Error != nil {
-		return f.Error
+	if err := f.getError(); err != nil {
+		return err
 	}
 	f.userID.Store(&userId)
 	// Capture username from context (this is what plugin scrobblers do)
@@ -1148,16 +1537,17 @@ func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble)
 	}
 	f.LastScrobble.Store(&s)
 	f.ScrobbleCalled.Store(true)
-	if f.Error != nil {
-		return f.Error
+	f.scrobbleAttempts.Add(1)
+	if err := f.getError(); err != nil {
+		return err
 	}
 	return nil
 }
 
 func (f *fakeScrobbler) PlaybackReport(ctx context.Context, info PlaybackSession) error {
 	f.PlaybackReportCalled.Store(true)
-	if f.Error != nil {
-		return f.Error
+	if err := f.getError(); err != nil {
+		return err
 	}
 	f.userID.Store(new(info.UserId))
 	f.LastPlaybackReport.Store(&info)

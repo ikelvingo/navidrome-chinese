@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -110,6 +111,15 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.Public).To(BeTrue())
 				Expect(result.Readonly).To(BeFalse())
 			})
+
+			It("is read-only for a synced playlist even as owner", func() {
+				ctx = request.WithUser(ctx, model.User{ID: "1234", UserName: "admin"})
+				playlist.Sync = true
+
+				result := router.buildPlaylist(ctx, playlist)
+
+				Expect(result.Readonly).To(BeTrue())
+			})
 		})
 
 		Context("when minimal clients list is empty", func() {
@@ -125,6 +135,19 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.Comment).To(Equal("Test comment"))
 				Expect(result.Owner).To(Equal("admin"))
 				Expect(result.Public).To(BeTrue())
+			})
+		})
+
+		Context("artwork emission", func() {
+			It("suffixes coverArt with the content hash when resolved", func() {
+				playlist.ImageHash = "0123456789abcdef"
+				result := router.buildPlaylist(ctx, playlist)
+				Expect(result.CoverArt).To(Equal("pl-pls-1_0123456789abcdef"))
+			})
+			It("omits coverArt when known absent", func() {
+				playlist.ImageAbsent = true
+				result := router.buildPlaylist(ctx, playlist)
+				Expect(result.CoverArt).To(BeEmpty())
 			})
 		})
 
@@ -197,7 +220,7 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.SongCount).To(Equal(int32(10)))
 				Expect(result.Duration).To(Equal(int32(600)))
 				Expect(result.Created).To(Equal(playlist.CreatedAt))
-				Expect(result.Changed).To(Equal(evaluatedAt))
+				Expect(result.Changed).To(Equal(playlist.UpdatedAt))
 
 				// These should not be set
 				Expect(result.Comment).To(BeEmpty())
@@ -222,7 +245,7 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.SongCount).To(Equal(int32(10)))
 				Expect(result.Duration).To(Equal(int32(600)))
 				Expect(result.Created).To(Equal(playlist.CreatedAt))
-				Expect(result.Changed).To(Equal(*playlist.EvaluatedAt))
+				Expect(result.Changed).To(Equal(playlist.UpdatedAt))
 				Expect(result.Comment).To(Equal("Test comment"))
 				Expect(result.Owner).To(Equal("admin"))
 				Expect(result.Public).To(BeTrue())
@@ -246,6 +269,56 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.Public).To(BeTrue())
 				Expect(result.OpenSubsonicPlaylist).To(BeNil())
 			})
+		})
+
+		Context("when it was never evaluated", func() {
+			BeforeEach(func() {
+				playlist.EvaluatedAt = nil
+				player := model.Player{Client: "regular-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("omits validUntil but still reports changed", func() {
+				result := router.buildPlaylist(ctx, playlist)
+
+				Expect(result.ValidUntil).To(BeNil())
+				Expect(result.Changed).To(Equal(playlist.UpdatedAt))
+			})
+		})
+
+		Context("with a per-playlist refreshDelay", func() {
+			BeforeEach(func() {
+				playlist.Rules.RefreshDelay = 24 * time.Hour
+				player := model.Player{Client: "regular-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("computes validUntil from the playlist's own delay", func() {
+				result := router.buildPlaylist(ctx, playlist)
+				expected := evaluatedAt.Add(24 * time.Hour)
+				Expect(result.ValidUntil).To(Equal(&expected))
+			})
+		})
+	})
+
+	Describe("annotation leakage", func() {
+		It("does not serialize starred/rating even when the model carries them", func() {
+			p := model.Playlist{ID: "pl-1", Name: "My Playlist"}
+			p.Starred = true
+			p.Rating = 5
+
+			resp := router.buildPlaylist(ctx, p)
+
+			data, err := json.Marshal(resp)
+			Expect(err).ToNot(HaveOccurred())
+			var fields map[string]any
+			Expect(json.Unmarshal(data, &fields)).To(Succeed())
+			Expect(fields).ToNot(HaveKey("starred"))
+			Expect(fields).ToNot(HaveKey("starredAt"))
+			Expect(fields).ToNot(HaveKey("rating"))
+			Expect(fields).ToNot(HaveKey("userRating"))
+			Expect(fields).ToNot(HaveKey("averageRating"))
+			Expect(fields).ToNot(HaveKey("playCount"))
 		})
 	})
 })

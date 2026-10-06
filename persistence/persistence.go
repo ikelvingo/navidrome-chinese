@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -97,6 +98,14 @@ func (s *SQLStore) Plugin(ctx context.Context) model.PluginRepository {
 	return NewPluginRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) Artwork(ctx context.Context) model.ArtworkRepository {
+	return NewArtworkRepository(ctx, s.getDBXBuilder())
+}
+
+func (s *SQLStore) ArtworkQueue(ctx context.Context) model.ArtworkQueueRepository {
+	return NewArtworkQueueRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
@@ -123,16 +132,22 @@ func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository
 		return s.Tag(ctx).(model.ResourceRepository)
 	case model.Plugin:
 		return s.Plugin(ctx).(model.ResourceRepository)
+	case model.Scrobble:
+		return s.Scrobble(ctx).(model.ResourceRepository)
 	}
 	log.Error("Resource not implemented", "model", reflect.TypeOf(m).Name())
 	return nil
 }
 
-func (s *SQLStore) WithTx(block func(tx model.DataStore) error, scope ...string) error {
-	var msg string
+func scopeLabel(scope []string) string {
 	if len(scope) > 0 {
-		msg = scope[0]
+		return scope[0]
 	}
+	return ""
+}
+
+func (s *SQLStore) WithTx(block func(tx model.DataStore) error, scope ...string) error {
+	msg := scopeLabel(scope)
 	start := time.Now()
 	conn, inTx := s.db.(*dbx.DB)
 	if !inTx {
@@ -167,6 +182,51 @@ func (s *SQLStore) WithTxImmediate(block func(tx model.DataStore) error, scope .
 	}, scope...)
 }
 
+// txRetryDelay spaces out reruns of a busy transaction. Each attempt has already waited out the
+// busy timeout, so WithTxRetry gives up only after a sustained lock.
+var txRetryDelay = 5 * time.Second
+
+const txMaxRetries = 3
+
+func (s *SQLStore) WithTxRetry(ctx context.Context, block func(ctx context.Context, tx model.DataStore) error, scope ...string) error {
+	// Inside a transaction, join it: the outer one holds the lock and owns commit and rollback
+	if _, ok := s.db.(*dbx.DB); !ok {
+		return block(ctx, s)
+	}
+	for attempt := 0; ; attempt++ {
+		attemptCtx := ctx
+		if attempt < txMaxRetries {
+			attemptCtx = withBusyRetry(ctx)
+		}
+		err := s.WithTx(func(tx model.DataStore) error { return block(attemptCtx, tx) }, scope...)
+		if attempt == txMaxRetries || !db.IsBusy(err) {
+			return err
+		}
+		log.Warn(ctx, "Database busy, retrying transaction", "scope", scopeLabel(scope), "attempt", attempt+1, err)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Duration(attempt+1) * txRetryDelay):
+		}
+	}
+}
+
+type busyRetryKey struct{}
+
+// withBusyRetry marks a transaction attempt that WithTxRetry will rerun, so a busy statement in it
+// is logged as a warning rather than an error.
+func withBusyRetry(ctx context.Context) context.Context {
+	return context.WithValue(ctx, busyRetryKey{}, true)
+}
+
+func hasBusyRetry(ctx context.Context) bool {
+	if ctx == nil {
+		return false
+	}
+	retry, _ := ctx.Value(busyRetryKey{}).(bool)
+	return retry
+}
+
 func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 	trace := func(ctx context.Context, msg string, f func() error) func() error {
 		return func() error {
@@ -191,14 +251,15 @@ func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 		trace(ctx, "clean album annotations", func() error { return s.Album(ctx).(*albumRepository).cleanAnnotations() }),
 		trace(ctx, "clean artist annotations", func() error { return s.Artist(ctx).(*artistRepository).cleanAnnotations() }),
 		trace(ctx, "clean media file annotations", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations() }),
+		trace(ctx, "clean playlist annotations", func() error { return s.Playlist(ctx).(*playlistRepository).cleanAnnotations() }),
 		trace(ctx, "clean media file bookmarks", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanBookmarks() }),
 		trace(ctx, "purge non used tags", func() error { return s.Tag(ctx).(*tagRepository).purgeUnused() }),
 		trace(ctx, "remove orphan playlist tracks", func() error { return s.Playlist(ctx).(*playlistRepository).removeOrphans() }),
 	)
 	if err != nil {
-		log.Error(ctx, "Error tidying up database", err)
+		return fmt.Errorf("tidying up database: %w", err)
 	}
-	return err
+	return nil
 }
 
 func (s *SQLStore) getDBXBuilder() dbx.Builder {

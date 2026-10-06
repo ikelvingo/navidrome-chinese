@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -279,12 +280,19 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 		return stream.IsAACCodec(p.Container)
 	})
 
+	player, hasPlayer := request.PlayerFrom(ctx)
+
 	// Honor the player's forced transcoding format, falling back to normal
 	// negotiation when the client can't play it (issue #5583).
+	maxBitRate := 0
 	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
-		if !clientInfo.ForceFormat(trc.TargetFormat) {
+		if clientInfo.ForceFormat(trc.TargetFormat) {
+			// DirectPlayProfile carries no bitrate, so this ceiling is the only
+			// thing keeping an over-bitrate source out of direct play.
+			maxBitRate = trc.DefaultBitRate
+		} else {
 			clientName := clientInfo.Name
-			if player, ok := request.PlayerFrom(ctx); ok && player.Client != "" {
+			if hasPlayer && player.Client != "" {
 				clientName = player.Client
 			}
 			log.Debug(ctx, "Player forced format not supported by client; falling back to negotiation",
@@ -292,13 +300,13 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// Apply the player's MaxBitRate as a ceiling on the client's declared
-	// limits (issue #5583). Both fields are capped because the client sends
-	// them independently here; capping only MaxAudioBitrate would let an
-	// independent MaxTranscodingAudioBitrate slip through computeBitrate.
-	if player, ok := request.PlayerFrom(ctx); ok && clientInfo.CapBitrate(player.MaxBitRate) {
-		log.Debug(ctx, "Applied player MaxBitRate cap to transcode decision",
-			"playerMaxBitRate", player.MaxBitRate, "client", clientInfo.Name)
+	// The player's own MaxBitRate outranks the forced-format default (issue #5583).
+	if hasPlayer && player.MaxBitRate > 0 {
+		maxBitRate = player.MaxBitRate
+	}
+	if clientInfo.CapBitrate(maxBitRate) {
+		log.Debug(ctx, "Applied bitrate ceiling to transcode decision",
+			"maxBitRate", maxBitRate, "client", clientInfo.Name)
 	}
 
 	// Get media file
@@ -315,7 +323,8 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	decision, err := api.transcodeDecision.MakeDecision(ctx, mf, clientInfo, stream.TranscodeOptions{})
 	if err != nil {
 		log.Error(ctx, "Failed to make transcode decision", "mediaID", mediaID, err)
-		return nil, newError(responses.ErrorGeneric, "failed to make transcode decision")
+		code, reason := transcodeFailure(err)
+		return nil, newError(code, "failed to make transcode decision: %s", reason)
 	}
 
 	// Only create a token when there is a valid playback path
@@ -344,6 +353,19 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	}
 
 	return response, nil
+}
+
+// transcodeFailure maps a decision error to a Subsonic error code and a reason
+// safe to send to clients, omitting server file paths.
+func transcodeFailure(err error) (int32, string) {
+	pe, ok := errors.AsType[*ffmpeg.ProbeError](err)
+	if !ok {
+		return responses.ErrorGeneric, "internal error"
+	}
+	if pe.NotFound {
+		return responses.ErrorDataNotFound, pe.SafeReason()
+	}
+	return responses.ErrorGeneric, pe.SafeReason()
 }
 
 // GetTranscodeStream handles the OpenSubsonic getTranscodeStream endpoint.
