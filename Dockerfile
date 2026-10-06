@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM docker.m.daocloud.io/crazymax/osxcross:14.5-debian AS osxcross
+FROM --platform=$BUILDPLATFORM ghcr.chenby.cn/crazy-max/osxcross:14.5-debian AS osxcross
 
 ########################################################################################################################
 ### Build xx (original image: tonistiigi/xx)
